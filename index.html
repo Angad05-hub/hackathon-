@@ -2,9 +2,12 @@
 <html lang="en">
 <head>
   <meta charset="utf-8" />
-  <title>DecentraAttend — Demo (Local Mock Chain)</title>
+  <title>DecentraAttend — Web3 (MetaMask + Signed Records)</title>
   <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <!-- Tailwind -->
   <script src="https://cdn.tailwindcss.com"></script>
+  <!-- Ethers.js for signing and verification -->
+  <script src="https://cdn.jsdelivr.net/npm/ethers@5.7.2/dist/ethers.umd.min.js"></script>
   <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;600;700;800&display=swap" rel="stylesheet">
   <style>
     :root {
@@ -14,11 +17,14 @@
     }
     html, body { height: 100%; }
     body {
-      font-family: 'Plus Jakarta Sans', system-ui, -apple-system, Segoe UI, Roboto, Ubuntu, Cantarell, "Helvetica Neue", Arial, "Noto Sans", "Apple Color Emoji", "Segoe UI Emoji", "Segoe UI Symbol", "Noto Color Emoji";
-      background: radial-gradient(1200px 800px at 10% 10%, #1e3a8a 0%, transparent 40%),
-                  radial-gradient(1000px 700px at 90% 20%, #7c3aed 0%, transparent 50%),
-                  radial-gradient(1400px 900px at 50% 90%, #0ea5e9 0%, #020617 60%);
+      font-family: 'Plus Jakarta Sans', system-ui, -apple-system, Segoe UI, Roboto, Ubuntu, Cantarell, "Helvetica Neue", Arial, "Noto Sans";
+      background:
+        radial-gradient(1200px 800px at 10% 10%, #1e3a8a 0%, transparent 40%),
+        radial-gradient(1000px 700px at 90% 20%, #7c3aed 0%, transparent 50%),
+        radial-gradient(1400px 900px at 50% 90%, #0ea5e9 0%, #020617 60%);
       color: #e5e7eb;
+      -webkit-font-smoothing: antialiased;
+      -moz-osx-font-smoothing: grayscale;
     }
     .glass {
       background: var(--glass);
@@ -34,51 +40,46 @@
       -webkit-backdrop-filter: blur(18px) saturate(140%);
       box-shadow: inset 0 1px 0 rgba(255,255,255,0.10), 0 12px 36px rgba(0,0,0,0.35);
     }
-    .btn {
-      transition: transform .08s ease, box-shadow .2s ease;
-    }
-    .btn:active { transform: translateY(1px) scale(0.99); }
+    .btn { transition: transform .08s ease, box-shadow .2s ease; }
+    .btn:active { transform: translateY(1px) scale(.99); }
     .badge {
       background: linear-gradient(135deg, rgba(59,130,246,0.18), rgba(139,92,246,0.18));
       border: 1px solid rgba(148,163,184,0.25);
     }
-    .shimmer {
-      position: relative;
-      overflow: hidden;
-    }
-    .shimmer::after {
-      content: "";
-      position: absolute;
-      inset: -100% -50%;
-      background: linear-gradient(120deg, transparent 0%, rgba(255,255,255,0.18) 30%, transparent 60%);
-      transform: translateX(-100%);
-      animation: shine 3.5s infinite ease-in-out;
-    }
-    @keyframes shine { 60% { transform: translateX(130%); } 100% { transform: translateX(130%); } }
+    .ring-focus:focus { outline: none; box-shadow: 0 0 0 3px rgba(99,102,241,0.5); }
+    .safe-pad { padding: clamp(16px, 3vw, 28px); }
     .toggle {
       width: 48px; height: 28px; border-radius: 999px; position: relative; cursor: pointer;
       transition: background-color .2s ease;
     }
     .toggle-dot {
-      position: absolute; top: 3px; left: 4px; width: 22px; height: 22px; border-radius: 999px;
-      background: white; transform: translateX(0); transition: transform .22s ease;
+      position: absolute; top: 3px; left: 4px; width: 22px; height: 22px; border-radius: 999px; background: white;
+      transform: translateX(0); transition: transform .22s ease;
+      box-shadow: 0 2px 8px rgba(0,0,0,.25);
     }
     .toggle.on .toggle-dot { transform: translateX(20px); }
     .toggle.on { background: linear-gradient(135deg, #22c55e, #16a34a); }
     .toggle.off { background: #475569; }
-    .scroll-smooth { scroll-behavior: smooth; }
-    .safe-pad { padding: clamp(16px, 3vw, 28px); }
-    .ring-focus:focus { outline: none; box-shadow: 0 0 0 3px rgba(99,102,241,0.5); }
+    .mono { font-variant-ligatures: none; font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", monospace; }
+    .progress { height: 8px; border-radius: 999px; overflow:hidden; background: rgba(148,163,184,.18); }
+    .progress > div { height: 100%; background: linear-gradient(90deg, #22c55e, #16a34a); }
+    .pill { border-radius: 999px; padding: .25rem .6rem; font-size: .72rem; border: 1px solid rgba(148,163,184,.25); }
+    .shimmer{ position:relative; overflow:hidden; }
+    .shimmer::after{
+      content:""; position:absolute; inset:-100% -40%;
+      background: linear-gradient(120deg, transparent 0%, rgba(255,255,255,.18) 30%, transparent 60%);
+      transform: translateX(-100%); animation: shine 3.5s infinite ease-in-out;
+    }
+    @keyframes shine { 60%{ transform: translateX(130%);} 100%{ transform: translateX(130%);} }
   </style>
 </head>
 <body class="scroll-smooth">
   <div class="min-h-full">
     <!-- Header -->
     <header class="safe-pad">
-      <div class="glass-strong rounded-2xl px-5 py-4 md:px-7 md:py-5 flex items-center justify-between gap-4">
+      <div class="glass-strong rounded-2xl px-5 py-4 md:px-7 md:py-5 flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4">
         <div class="flex items-center gap-4">
           <div class="w-10 h-10 rounded-xl flex items-center justify-center bg-gradient-to-tr from-indigo-500 via-fuchsia-500 to-cyan-400 text-white shadow-lg">
-            <!-- Simple chain SVG -->
             <svg width="22" height="22" viewBox="0 0 24 24" fill="none" class="opacity-95">
               <rect x="2.5" y="3" width="9" height="8" rx="2" stroke="white" stroke-opacity=".9"/>
               <rect x="12.5" y="13" width="9" height="8" rx="2" stroke="white" stroke-opacity=".9"/>
@@ -87,47 +88,65 @@
           </div>
           <div>
             <div class="flex items-center gap-3">
-              <h1 class="text-xl md:text-2xl font-extrabold tracking-tight">DecentraAttend</h1>
-              <span class="badge text-[11px] md:text-xs px-2.5 py-1 rounded-full">Demo • Local Mock Chain</span>
+              <h1 class="text-xl md:text-2xl font-extrabold tracking-tight">DecentraAttend — Web3</h1>
+              <span class="badge text-[11px] md:text-xs px-2.5 py-1 rounded-full">MetaMask • Signed Records</span>
             </div>
-            <p class="text-slate-300/80 text-sm mt-0.5">Attractive, responsive, and fully functional attendance tracker (simulated decentralization).</p>
+            <p class="text-slate-300/80 text-sm mt-0.5">Attractive, easy attendance with a local ledger + optional wallet signatures.</p>
           </div>
         </div>
         <div class="flex flex-wrap items-center gap-2">
-          <button id="btnCreateEvent" class="btn rounded-xl px-3.5 py-2.5 bg-gradient-to-r from-indigo-500 to-fuchsia-500 hover:from-indigo-400 hover:to-fuchsia-400 text-white text-sm font-semibold shadow-md">Create Event</button>
+          <button id="btnCreateEvent" class="btn rounded-xl px-3.5 py-2.5 bg-gradient-to-r from-indigo-500 to-fuchsia-500 hover:from-indigo-400 hover:to-fuchsia-400 text-white text-sm font-semibold">Create Event</button>
           <button id="btnImport" class="btn rounded-xl px-3.5 py-2.5 bg-slate-700/60 hover:bg-slate-600/70 text-white text-sm font-semibold">Import</button>
           <button id="btnExport" class="btn rounded-xl px-3.5 py-2.5 bg-slate-700/60 hover:bg-slate-600/70 text-white text-sm font-semibold">Export</button>
-          <button id="btnVerify" class="btn rounded-xl px-3.5 py-2.5 bg-emerald-600/90 hover:bg-emerald-500 text-white text-sm font-semibold">Verify Chain</button>
+          <button id="btnVerify" class="btn rounded-xl px-3.5 py-2.5 bg-emerald-600/90 hover:bg-emerald-500 text-white text-sm font-semibold">Verify</button>
           <button id="btnHelp" class="btn rounded-xl px-3.5 py-2.5 bg-sky-600/90 hover:bg-sky-500 text-white text-sm font-semibold">Help</button>
         </div>
       </div>
     </header>
 
-    <!-- Status & Quick Stats -->
+    <!-- Status & Wallet -->
     <section class="safe-pad pt-2">
-      <div class="grid md:grid-cols-4 gap-4">
+      <div class="grid md:grid-cols-4 lg:grid-cols-5 gap-4">
         <div class="glass rounded-2xl p-4">
           <div class="flex items-center justify-between">
-            <span class="text-sm text-slate-300/80">Chain Status</span>
-            <span id="chainStatusPill" class="text-xs px-2 py-1 rounded-full bg-emerald-500/20 border border-emerald-400/30 text-emerald-200">Verified</span>
+            <span class="text-sm text-slate-300/80">Chain Integrity</span>
+            <span id="chainStatusPill" class="pill bg-emerald-500/20 text-emerald-200 border-emerald-400/30">Verified</span>
           </div>
           <div class="text-2xl font-bold mt-2" id="chainStatusText">Healthy</div>
-          <div class="text-xs text-slate-400 mt-1">Integrity check of all blocks</div>
+          <div class="text-xs text-slate-400 mt-1">Linked hashes + signatures</div>
         </div>
         <div class="glass rounded-2xl p-4">
           <div class="text-sm text-slate-300/80">Blocks</div>
           <div class="text-2xl font-bold mt-2" id="statBlocks">0</div>
-          <div class="text-xs text-slate-400 mt-1">Including genesis block</div>
+          <div class="text-xs text-slate-400 mt-1">Including genesis</div>
         </div>
         <div class="glass rounded-2xl p-4">
           <div class="text-sm text-slate-300/80">Participants</div>
           <div class="text-2xl font-bold mt-2" id="statParticipants">0</div>
-          <div class="text-xs text-slate-400 mt-1">For the selected event</div>
+          <div class="text-xs text-slate-400 mt-1">Current event</div>
         </div>
         <div class="glass rounded-2xl p-4">
-          <div class="text-sm text-slate-300/80">Present Now</div>
+          <div class="text-sm text-slate-300/80">Present</div>
           <div class="text-2xl font-bold mt-2" id="statPresent">0</div>
-          <div class="text-xs text-slate-400 mt-1">Marked in the current session</div>
+          <div class="text-xs text-slate-400 mt-1">In active session</div>
+        </div>
+
+        <!-- Wallet card -->
+        <div class="glass rounded-2xl p-4 md:col-span-2 lg:col-span-1">
+          <div class="flex items-center justify-between">
+            <span class="text-sm text-slate-300/80">Wallet</span>
+            <span id="walletPill" class="pill bg-amber-500/20 text-amber-200 border-amber-400/30">Demo Mode</span>
+          </div>
+          <div id="walletAddr" class="text-sm font-semibold mt-2 mono truncate">Not connected</div>
+          <div id="walletNet" class="text-xs text-slate-400">—</div>
+          <div class="flex items-center gap-2 mt-3">
+            <button id="btnConnect" class="btn rounded-lg px-3 py-2 bg-gradient-to-r from-indigo-500 to-fuchsia-500 hover:from-indigo-400 hover:to-fuchsia-400 text-white text-sm font-semibold">Connect</button>
+            <button id="btnDisconnect" class="btn rounded-lg px-3 py-2 bg-slate-700/60 hover:bg-slate-600/70 text-sm">Disconnect</button>
+          </div>
+          <div class="mt-3 flex items-center justify-between">
+            <div class="text-xs text-slate-300/80">Auto-sign blocks</div>
+            <div id="autoSignToggle" class="toggle off"><div class="toggle-dot"></div></div>
+          </div>
         </div>
       </div>
     </section>
@@ -150,7 +169,7 @@
                   <div class="text-slate-300/80">Event Code</div>
                   <div id="eventCode" class="font-semibold text-white mt-0.5">—</div>
                 </div>
-                <button id="btnCopyCode" class="btn rounded-xl px-3 py-2 bg-slate-700/60 hover:bg-slate-600/70 text-white text-sm">Copy</button>
+                <button id="btnCopyCode" class="btn rounded-xl px-3 py-2 bg-slate-700/60 hover:bg-slate-600/70 text-sm">Copy</button>
               </div>
             </div>
             <div class="mt-4 grid sm:grid-cols-2 gap-3">
@@ -171,7 +190,7 @@
               <input id="qaId" required placeholder="ID (e.g., S001)" class="ring-focus rounded-xl bg-slate-800/50 border border-slate-600/50 px-3 py-2.5 text-slate-100" />
               <button class="btn rounded-xl px-4 py-2.5 bg-indigo-600 hover:bg-indigo-500 text-white font-semibold">Add</button>
             </form>
-            <p class="text-xs text-slate-400 mt-2">All actions are recorded to the mock chain.</p>
+            <p class="text-xs text-slate-400 mt-2">All actions are recorded. If connected, your wallet can sign each block.</p>
           </div>
 
           <!-- Attendance Controls -->
@@ -202,6 +221,7 @@
                 <option value="ATTENDANCE">Attendance</option>
                 <option value="PARTICIPANT">Participants</option>
                 <option value="EVENT">Events</option>
+                <option value="SIGNED">Signed Only</option>
               </select>
             </div>
             <div id="feed" class="mt-4 space-y-3 max-h-[440px] overflow-auto pr-2">
@@ -229,6 +249,8 @@
               <div class="text-sm text-slate-300/80 mb-1">Genesis Hash</div>
               <div id="genesisHash" class="text-xs md:text-sm text-slate-200 break-all">—</div>
             </div>
+            <div class="mt-4 progress"><div id="healthBar" style="width:100%"></div></div>
+            <div id="healthText" class="text-xs text-emerald-300 mt-1">Verified</div>
           </div>
         </div>
       </div>
@@ -255,92 +277,123 @@
 
     <!-- Footer -->
     <footer class="safe-pad pt-2 pb-8 text-center text-slate-400 text-xs">
-      Note: This is a demo that simulates decentralization locally. No data leaves your device.
+      Tip: For real wallet connections, save this as index.html and open it in a browser with MetaMask installed. No data leaves your device unless you choose to sign.
     </footer>
   </div>
 
   <script>
-    // ----- Simple utilities -----
-    const LS_KEY = 'decentra_attendance_chain_v1';
-    const $ = sel => document.querySelector(sel);
-    const $$ = sel => Array.from(document.querySelectorAll(sel));
+    // ---------- Utilities ----------
+    const LS_KEY = 'decentra_attendance_chain_web3_v1';
+    const $ = s => document.querySelector(s);
+    const $$ = s => Array.from(document.querySelectorAll(s));
+    const wait = (ms)=> new Promise(r=>setTimeout(r,ms));
 
-    function nowISO() { return new Date().toISOString(); }
-    function shortId(n=6) {
-      const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
-      let out = '';
-      for (let i=0;i<n;i++) out += chars[Math.floor(Math.random()*chars.length)];
-      return out;
+    function nowISO(){ return new Date().toISOString(); }
+    function shortId(n=6){
+      const c='ABCDEFGHJKLMNPQRSTUVWXYZ23456789'; let o='';
+      for(let i=0;i<n;i++) o+=c[Math.floor(Math.random()*c.length)];
+      return o;
     }
-    // Non-cryptographic hash for demo integrity (fast + deterministic)
-    function demoHash(str) {
-      let h1 = 0x811c9dc5, h2 = 0x811c9dc5;
-      for (let i=0;i<str.length;i++) {
-        h1 ^= str.charCodeAt(i); h1 = Math.imul(h1, 0x01000193);
-        h2 += str.charCodeAt(i) ^ (h1>>>1); h2 = Math.imul(h2, 2654435761);
-      }
-      const x = (h1>>>0).toString(16).padStart(8,'0') + (h2>>>0).toString(16).padStart(8,'0');
-      return x + '-' + (str.length*131).toString(16);
+    function toast(msg){
+      $('#toastText').textContent = msg;
+      $('#toast').classList.remove('hidden');
+      setTimeout(()=>$('#toast').classList.add('hidden'), 1600);
+    }
+    // Lightweight demo hash (not cryptographic)
+    function demoHash(str){
+      let h1=0x811c9dc5, h2=0x811c9dc5;
+      for(let i=0;i<str.length;i++){ h1^=str.charCodeAt(i); h1=Math.imul(h1,0x01000193); h2 += str.charCodeAt(i) ^ (h1>>>1); h2=Math.imul(h2,2654435761); }
+      return (h1>>>0).toString(16).padStart(8,'0') + (h2>>>0).toString(16).padStart(8,'0') + '-' + (str.length*131).toString(16);
     }
 
-    // ----- Chain state -----
+    // ---------- Local chain with optional wallet signatures ----------
+    // Block fields: {index, ts, prevHash, data, signer?, sig?, hash}
     let chain = [];
-
-    function saveChain() {
-      localStorage.setItem(LS_KEY, JSON.stringify({chain}));
+    function saveChain(){ localStorage.setItem(LS_KEY, JSON.stringify({chain})); }
+    function loadChain(){
+      try{
+        const v = JSON.parse(localStorage.getItem(LS_KEY)||'{}');
+        return Array.isArray(v.chain) ? v.chain : null;
+      }catch(e){ return null; }
     }
-    function loadChain() {
-      const raw = localStorage.getItem(LS_KEY);
-      if (!raw) return null;
-      try {
-        const parsed = JSON.parse(raw);
-        if (Array.isArray(parsed.chain)) return parsed.chain;
-      } catch(e) { /* ignore */ }
-      return null;
-    }
-
-    function createGenesis() {
+    function createGenesis(){
       const block = {
         index: 0,
         ts: nowISO(),
         prevHash: 'GENESIS',
-        data: { type: 'GENESIS', payload: { note: 'Welcome to DecentraAttend (Demo)' } },
+        data: { type: 'GENESIS', payload: { note: 'DecentraAttend Web3 — Genesis' } },
       };
       block.hash = demoHash(JSON.stringify({i:block.index,t:block.ts,p:block.prevHash,d:block.data}));
       chain = [block];
       saveChain();
     }
+    function signMessageContent(index, ts, prevHash, data){
+      // This exact string must be used for both signing and verification
+      return `DecentraAttend v1 block\n` + JSON.stringify({ i:index, t:ts, p:prevHash, d:data });
+    }
 
-    function addBlock(data) {
+    // Wallet state
+    const wallet = {
+      connected: false,
+      address: null,
+      chainId: null,
+      provider: null,
+      signer: null,
+      autoSign: false,
+    };
+
+    async function addBlock(data, {bulk=false} = {}){
       const last = chain[chain.length-1];
-      const block = {
-        index: chain.length,
-        ts: nowISO(),
-        prevHash: last.hash,
-        data
-      };
-      block.hash = demoHash(JSON.stringify({i:block.index,t:block.ts,p:block.prevHash,d:block.data}));
+      const index = chain.length;
+      const ts = nowISO();
+      const prevHash = last.hash;
+      const block = { index, ts, prevHash, data };
+      // Sign if connected + autoSign + not a bulk write (avoid spam prompts)
+      if(wallet.connected && wallet.autoSign && !bulk && wallet.signer){
+        try{
+          const msg = signMessageContent(index, ts, prevHash, data);
+          const sig = await wallet.signer.signMessage(msg);
+          block.sig = sig;
+          block.signer = wallet.address;
+        }catch(err){
+          // If user rejects, still record unsigned block
+          console.warn('Signature skipped:', err);
+        }
+      }
+      // Hash includes signature fields if present
+      block.hash = demoHash(JSON.stringify({i:block.index,t:block.ts,p:block.prevHash,d:block.data,s:block.sig||null,r:block.signer||null}));
       chain.push(block);
       saveChain();
       rebuildAndRender();
     }
 
-    function verifyChain() {
-      for (let i=0;i<chain.length;i++) {
+    function verifyChain(){
+      let sigIssues = 0;
+      for (let i=0;i<chain.length;i++){
         const b = chain[i];
-        const refHash = demoHash(JSON.stringify({i:b.index,t:b.ts,p:b.prevHash,d:b.data}));
-        if (b.hash !== refHash) return { ok:false, at:i, reason:'Hash mismatch' };
+        // Verify hash linkage
+        const refHash = demoHash(JSON.stringify({i:b.index,t:b.ts,p:b.prevHash,d:b.data,s:b.sig||null,r:b.signer||null}));
+        if (b.hash !== refHash) return { ok:false, at:i, reason:'Hash mismatch', sigIssues };
         if (i===0) {
-          if (b.prevHash !== 'GENESIS') return { ok:false, at:i, reason:'Bad genesis' };
+          if (b.prevHash !== 'GENESIS') return { ok:false, at:i, reason:'Bad genesis', sigIssues };
         } else {
-          if (b.prevHash !== chain[i-1].hash) return { ok:false, at:i, reason:'Broken link' };
+          if (b.prevHash !== chain[i-1].hash) return { ok:false, at:i, reason:'Broken link', sigIssues };
+        }
+        // Verify signature if present
+        if (b.sig) {
+          try{
+            const msg = signMessageContent(b.index, b.ts, b.prevHash, b.data);
+            const recovered = ethers.utils.verifyMessage(msg, b.sig);
+            const match = (recovered || '').toLowerCase() === (b.signer || '').toLowerCase();
+            if (!match) sigIssues++;
+          }catch(e){ sigIssues++; }
         }
       }
-      return { ok:true };
+      return { ok:true, sigIssues };
     }
 
-    // Build full state from chain (events, participants, sessions, attendance)
-    function buildState() {
+    // ---------- Build app state from chain ----------
+    function buildState(){
       const events = {}; // id -> {id,name,code,createdAt, participants:{pid:{id,name}}, sessionActive, attendance:{pid:bool}, lastUpdated}
       for (const b of chain) {
         const t = b.data?.type;
@@ -358,7 +411,7 @@
         }
         if (t === 'SESSION_STARTED') {
           ev.sessionActive = true;
-          ev.attendance = {}; // fresh map for new session
+          ev.attendance = {}; // fresh session
         }
         if (t === 'SESSION_ENDED') {
           ev.sessionActive = false;
@@ -374,39 +427,55 @@
       return { events };
     }
 
-    // ----- UI wiring -----
+    // ---------- Elements ----------
     const el = {
+      // Header stats
+      chainStatusPill: $('#chainStatusPill'),
+      chainStatusText: $('#chainStatusText'),
+      statBlocks: $('#statBlocks'),
+      statParticipants: $('#statParticipants'),
+      statPresent: $('#statPresent'),
+      // Wallet
+      walletPill: $('#walletPill'),
+      walletAddr: $('#walletAddr'),
+      walletNet: $('#walletNet'),
+      btnConnect: $('#btnConnect'),
+      btnDisconnect: $('#btnDisconnect'),
+      autoSignToggle: $('#autoSignToggle'),
+      // Event section
       eventSelect: $('#eventSelect'),
       eventCode: $('#eventCode'),
       btnCopyCode: $('#btnCopyCode'),
       btnStartSession: $('#btnStartSession'),
       btnEndSession: $('#btnEndSession'),
       sessionHint: $('#sessionHint'),
-      statBlocks: $('#statBlocks'),
-      statParticipants: $('#statParticipants'),
-      statPresent: $('#statPresent'),
-      chainStatusPill: $('#chainStatusPill'),
-      chainStatusText: $('#chainStatusText'),
+      // Attendance controls
+      btnOpenAddParticipant: $('#btnOpenAddParticipant'),
+      quickAddForm: $('#quickAddForm'),
+      qaName: $('#qaName'),
+      qaId: $('#qaId'),
+      btnMarkAttendance: $('#btnMarkAttendance'),
+      btnMarkAll: $('#btnMarkAll'),
+      btnClearAll: $('#btnClearAll'),
+      presentChips: $('#presentChips'),
+      // Feed
       feed: $('#feed'),
       feedFilter: $('#feedFilter'),
-      presentChips: $('#presentChips'),
+      // Overview
       ovBlocks: $('#ovBlocks'),
       ovUpdated: $('#ovUpdated'),
       genesisBox: $('#genesisBox'),
       genesisHash: $('#genesisHash'),
       btnGenesis: $('#btnGenesis'),
+      healthBar: $('#healthBar'),
+      healthText: $('#healthText'),
+      // Globals
       btnCreateEvent: $('#btnCreateEvent'),
       btnImport: $('#btnImport'),
       btnExport: $('#btnExport'),
       btnVerify: $('#btnVerify'),
       btnHelp: $('#btnHelp'),
-      quickAddForm: $('#quickAddForm'),
-      qaName: $('#qaName'),
-      qaId: $('#qaId'),
-      btnOpenAddParticipant: $('#btnOpenAddParticipant'),
-      btnMarkAttendance: $('#btnMarkAttendance'),
-      btnMarkAll: $('#btnMarkAll'),
-      btnClearAll: $('#btnClearAll'),
+      // Modal + toast
       modalOverlay: $('#modalOverlay'),
       modalCard: $('#modalCard'),
       modalTitle: $('#modalTitle'),
@@ -419,12 +488,7 @@
     let appState = { events:{} };
     let currentEventId = null;
 
-    function toast(msg) {
-      el.toastText.textContent = msg;
-      el.toast.classList.remove('hidden');
-      setTimeout(()=> el.toast.classList.add('hidden'), 1600);
-    }
-
+    // ---------- UI ----------
     function openModal(title, contentEl) {
       el.modalTitle.textContent = title;
       el.modalBody.innerHTML = '';
@@ -433,21 +497,49 @@
       el.modalCard.classList.add('shimmer');
       setTimeout(()=> el.modalCard.classList.remove('shimmer'), 800);
     }
-    function closeModal() {
-      el.modalOverlay.classList.add('hidden');
+    function closeModal() { el.modalOverlay.classList.add('hidden'); }
+
+    function setWalletUI(){
+      if (wallet.connected) {
+        el.walletPill.textContent = 'Connected';
+        el.walletPill.className = 'pill bg-emerald-500/20 text-emerald-200 border-emerald-400/30';
+        el.walletAddr.textContent = wallet.address;
+        el.walletNet.textContent = 'Chain: ' + wallet.chainId;
+      } else {
+        el.walletPill.textContent = 'Demo Mode';
+        el.walletPill.className = 'pill bg-amber-500/20 text-amber-200 border-amber-400/30';
+        el.walletAddr.textContent = 'Not connected';
+        el.walletNet.textContent = '—';
+      }
+      el.autoSignToggle.classList.toggle('on', wallet.autoSign);
+      el.autoSignToggle.classList.toggle('off', !wallet.autoSign);
+      // In demo mode, auto-sign off
+      if (!wallet.connected) wallet.autoSign = false;
     }
 
-    // Renderers
     function renderHeaderStats() {
       const ver = verifyChain();
-      if (ver.ok) {
+      if (ver.ok && (ver.sigIssues||0) === 0) {
         el.chainStatusPill.textContent = 'Verified';
-        el.chainStatusPill.className = 'text-xs px-2 py-1 rounded-full bg-emerald-500/20 border border-emerald-400/30 text-emerald-200';
+        el.chainStatusPill.className = 'pill bg-emerald-500/20 text-emerald-200 border-emerald-400/30';
         el.chainStatusText.textContent = 'Healthy';
+        el.healthBar.style.width = '100%';
+        el.healthText.textContent = 'Verified';
+        el.healthText.className = 'text-xs text-emerald-300 mt-1';
+      } else if (ver.ok && ver.sigIssues > 0) {
+        el.chainStatusPill.textContent = 'Verified*';
+        el.chainStatusPill.className = 'pill bg-amber-500/20 text-amber-200 border-amber-400/30';
+        el.chainStatusText.textContent = `Signatures: ${ver.sigIssues} issue(s)`;
+        el.healthBar.style.width = '80%';
+        el.healthText.textContent = 'Signature warnings';
+        el.healthText.className = 'text-xs text-amber-300 mt-1';
       } else {
         el.chainStatusPill.textContent = 'Invalid';
-        el.chainStatusPill.className = 'text-xs px-2 py-1 rounded-full bg-rose-500/20 border border-rose-400/30 text-rose-200';
+        el.chainStatusPill.className = 'pill bg-rose-500/20 text-rose-200 border-rose-400/30';
         el.chainStatusText.textContent = `Issue at block #${ver.at}`;
+        el.healthBar.style.width = '40%';
+        el.healthText.textContent = 'Invalid — hash/link issue';
+        el.healthText.className = 'text-xs text-rose-300 mt-1';
       }
       el.statBlocks.textContent = String(chain.length);
       el.ovBlocks.textContent = String(chain.length);
@@ -521,6 +613,7 @@
       const blocks = chain.slice().reverse().filter(b => {
         const t = b.data?.type;
         const p = b.data?.payload || {};
+        if (filter === 'SIGNED') return !!b.sig;
         if (filter === 'ALL') {
           if (evId) return ['EVENT_CREATED'].includes(t) ? true : p.eventId === evId;
           return true;
@@ -557,14 +650,21 @@
           title = `Attendance • ${who} → ${p.present ? 'Present' : 'Absent'}`;
           badgeClass = p.present ? 'bg-emerald-500/20 text-emerald-200 border-emerald-400/30' : 'bg-slate-600/30 text-slate-200 border-slate-400/30';
         }
+        const sigBadge = b.sig
+          ? `<span class="pill bg-emerald-500/20 text-emerald-200 border-emerald-400/30">Signed</span>`
+          : `<span class="pill bg-slate-700/40 text-slate-200">Unsigned</span>`;
 
         row.innerHTML = `
           <div class="flex items-center justify-between">
             <div class="font-semibold">${title}</div>
-            <span class="text-[10px] px-2 py-0.5 rounded-full border ${badgeClass}">${t}</span>
+            <div class="flex items-center gap-2">
+              <span class="text-[10px] px-2 py-0.5 rounded-full border ${badgeClass}">${t}</span>
+              ${sigBadge}
+            </div>
           </div>
           <div class="text-xs text-slate-400 mt-1">${new Date(b.ts).toLocaleString()}</div>
-          <div class="text-[11px] text-slate-400/80 mt-2 break-all">#${b.index} • ${b.hash}</div>
+          ${b.signer ? `<div class="text-[11px] text-slate-300/90 mt-1 mono truncate">${b.signer}</div>` : ''}
+          <div class="text-[11px] text-slate-400/80 mt-2 break-all mono">#${b.index} • ${b.hash}</div>
         `;
         feed.appendChild(row);
       }
@@ -578,7 +678,56 @@
       renderFeed();
     }
 
-    // ----- Actions -----
+    // ---------- Wallet actions ----------
+    function hasInjectedWallet(){
+      return typeof window !== 'undefined' && window.ethereum && typeof window.ethereum.request === 'function';
+    }
+
+    async function connectWallet(){
+      if (!hasInjectedWallet()) {
+        // Show guide
+        const guide = document.createElement('div');
+        guide.innerHTML = `
+          <div class="space-y-3 leading-relaxed text-sm">
+            <p><strong>MetaMask not detected here.</strong> This embed runs in a sandbox that usually blocks wallet extensions.</p>
+            <ol class="list-decimal pl-5 space-y-2">
+              <li>Save this page as <span class="mono">index.html</span> on your computer.</li>
+              <li>Open it with a desktop browser that has MetaMask installed.</li>
+              <li>Click Connect. You’ll see the wallet prompt for approval.</li>
+            </ol>
+            <p class="text-amber-300/90">You’ll then be able to auto-sign attendance records.</p>
+          </div>
+        `;
+        openModal('Connect Wallet — How to run locally', guide);
+        return;
+      }
+      try{
+        const accounts = await window.ethereum.request({ method: 'eth_requestAccounts' });
+        const chainId = await window.ethereum.request({ method: 'eth_chainId' });
+        wallet.provider = new ethers.providers.Web3Provider(window.ethereum);
+        wallet.signer = wallet.provider.getSigner();
+        wallet.address = (accounts && accounts[0]) ? accounts[0] : null;
+        wallet.chainId = chainId;
+        wallet.connected = !!wallet.address;
+        setWalletUI();
+        toast(wallet.connected ? 'Wallet connected' : 'Connection failed');
+      }catch(e){
+        toast('Connection cancelled');
+      }
+    }
+
+    function disconnectWallet(){
+      wallet.connected = false;
+      wallet.address = null;
+      wallet.chainId = null;
+      wallet.provider = null;
+      wallet.signer = null;
+      wallet.autoSign = false;
+      setWalletUI();
+      toast('Disconnected');
+    }
+
+    // ---------- Event flows ----------
     function ensureEventSelected() {
       if (!currentEventId || !appState.events[currentEventId]) {
         toast('Create an event first');
@@ -604,7 +753,7 @@
             </div>
           </div>
           <button class="btn mt-2 rounded-xl px-4 py-2.5 bg-gradient-to-r from-indigo-500 to-fuchsia-500 hover:from-indigo-400 hover:to-fuchsia-400 text-white font-semibold">Create</button>
-          <p class="text-xs text-slate-400">This will add an EVENT_CREATED block.</p>
+          <p class="text-xs text-slate-400">Creates a new event block. If auto-sign is on, it will be signed.</p>
         </form>
       `;
       const ceId = wrap.querySelector('#ceId');
@@ -613,18 +762,14 @@
       ceCode.value = shortId(4);
       openModal('Create Event', wrap);
 
-      wrap.querySelector('#formCreateEvent').addEventListener('submit', (e)=>{
+      wrap.querySelector('#formCreateEvent').addEventListener('submit', async (e)=>{
         e.preventDefault();
         const name = wrap.querySelector('#ceName').value.trim();
         const eventId = ceId.value.trim().toUpperCase();
         const code = ceCode.value.trim().toUpperCase();
         if (!name || !eventId || !code) return;
-        // Ensure unique
-        if (appState.events[eventId]) {
-          toast('Event ID exists');
-          return;
-        }
-        addBlock({ type:'EVENT_CREATED', payload:{ eventId, name, code } });
+        if (appState.events[eventId]) { toast('Event ID exists'); return; }
+        await addBlock({ type:'EVENT_CREATED', payload:{ eventId, name, code } });
         currentEventId = eventId;
         closeModal();
         toast('Event created');
@@ -654,12 +799,12 @@
       wrap.querySelector('#apName').value = prefill.name || '';
       wrap.querySelector('#apId').value = prefill.id || '';
 
-      wrap.querySelector('#formAddP').addEventListener('submit', (e)=>{
+      wrap.querySelector('#formAddP').addEventListener('submit', async (e)=>{
         e.preventDefault();
         const name = wrap.querySelector('#apName').value.trim();
         const participantId = wrap.querySelector('#apId').value.trim();
         if (!name || !participantId) return;
-        addBlock({ type:'PARTICIPANT_ADDED', payload:{ eventId: currentEventId, participantId, name } });
+        await addBlock({ type:'PARTICIPANT_ADDED', payload:{ eventId: currentEventId, participantId, name } });
         closeModal();
         toast('Participant added');
       });
@@ -668,10 +813,7 @@
     function markAttendanceFlow() {
       if (!ensureEventSelected()) return;
       const ev = appState.events[currentEventId];
-      if (!ev.sessionActive) {
-        toast('Start a session first');
-        return;
-      }
+      if (!ev.sessionActive) { toast('Start a session first'); return; }
       const wrap = document.createElement('div');
       const participants = Object.values(ev.participants).sort((a,b)=> a.name.localeCompare(b.name));
       wrap.innerHTML = `
@@ -680,6 +822,7 @@
             <input id="attSearch" placeholder="Search name or ID" class="ring-focus flex-1 rounded-xl bg-slate-800/50 border border-slate-600/50 px-3 py-2 text-slate-100" />
             <span class="text-xs text-slate-400">Session: ${ev.sessionActive ? 'Active' : 'Not active'}</span>
           </div>
+          <div class="text-xs text-slate-400">Tip: With auto-sign on, each toggle will ask your wallet to sign once.</div>
           <div id="attList" class="max-h-[320px] overflow-auto pr-1 space-y-2"></div>
         </div>
       `;
@@ -713,10 +856,9 @@
             </div>
           `;
           const tgl = row.querySelector('.toggle');
-          tgl.addEventListener('click', ()=>{
+          tgl.addEventListener('click', async ()=>{
             const newVal = !tgl.classList.contains('on');
-            addBlock({ type:'ATTENDANCE_MARKED', payload:{ eventId: currentEventId, participantId: p.id, name: p.name, present: newVal } });
-            // Local visual toggle; state will refresh anyway
+            await addBlock({ type:'ATTENDANCE_MARKED', payload:{ eventId: currentEventId, participantId: p.id, name: p.name, present: newVal } });
             tgl.classList.toggle('on', newVal);
             tgl.classList.toggle('off', !newVal);
           });
@@ -727,7 +869,7 @@
       wrap.querySelector('#attSearch').addEventListener('input', (e)=> renderList(e.target.value));
     }
 
-    // ----- Event listeners -----
+    // ---------- Event listeners ----------
     el.eventSelect.addEventListener('change', (e)=>{
       currentEventId = e.target.value || null;
       renderEventSelector();
@@ -743,29 +885,29 @@
       catch { toast('Copy failed'); }
     });
 
-    el.btnStartSession.addEventListener('click', ()=>{
+    el.btnStartSession.addEventListener('click', async ()=>{
       if (!ensureEventSelected()) return;
       const ev = appState.events[currentEventId];
       if (ev.sessionActive) { toast('Session already active'); return; }
-      addBlock({ type:'SESSION_STARTED', payload:{ eventId: currentEventId } });
+      await addBlock({ type:'SESSION_STARTED', payload:{ eventId: currentEventId } });
       toast('Session started');
     });
 
-    el.btnEndSession.addEventListener('click', ()=>{
+    el.btnEndSession.addEventListener('click', async ()=>{
       if (!ensureEventSelected()) return;
       const ev = appState.events[currentEventId];
       if (!ev.sessionActive) { toast('No active session'); return; }
-      addBlock({ type:'SESSION_ENDED', payload:{ eventId: currentEventId } });
+      await addBlock({ type:'SESSION_ENDED', payload:{ eventId: currentEventId } });
       toast('Session ended');
     });
 
-    el.quickAddForm.addEventListener('submit', (e)=>{
+    el.quickAddForm.addEventListener('submit', async (e)=>{
       e.preventDefault();
       if (!ensureEventSelected()) return;
       const name = el.qaName.value.trim();
       const id = el.qaId.value.trim();
       if (!name || !id) return;
-      addBlock({ type:'PARTICIPANT_ADDED', payload:{ eventId: currentEventId, participantId: id, name } });
+      await addBlock({ type:'PARTICIPANT_ADDED', payload:{ eventId: currentEventId, participantId: id, name } });
       el.qaName.value = ''; el.qaId.value = '';
       toast('Participant added');
     });
@@ -774,30 +916,30 @@
 
     el.btnMarkAttendance.addEventListener('click', ()=> markAttendanceFlow());
 
-    el.btnMarkAll.addEventListener('click', ()=>{
+    el.btnMarkAll.addEventListener('click', async ()=>{
       if (!ensureEventSelected()) return;
       const ev = appState.events[currentEventId];
       if (!ev.sessionActive) { toast('Start a session first'); return; }
       const ids = Object.keys(ev.participants);
       if (ids.length === 0) { toast('No participants'); return; }
-      // Keep it quick but not too heavy: cap to 100 in one go for demo data
-      const cap = 100;
+      // Bulk mode: to avoid many wallet prompts, blocks are recorded unsigned during bulk
       let count = 0;
       for (const pid of ids) {
         if (ev.attendance[pid]) continue;
-        addBlock({ type:'ATTENDANCE_MARKED', payload:{ eventId: currentEventId, participantId: pid, name: ev.participants[pid].name, present: true } });
-        if (++count >= cap) break;
+        await addBlock({ type:'ATTENDANCE_MARKED', payload:{ eventId: currentEventId, participantId: pid, name: ev.participants[pid].name, present: true } }, {bulk:true});
+        count++;
+        if (count % 10 === 0) await wait(10); // yield briefly
       }
       toast('Marked present (bulk)');
     });
 
-    el.btnClearAll.addEventListener('click', ()=>{
+    el.btnClearAll.addEventListener('click', async ()=>{
       if (!ensureEventSelected()) return;
       const ev = appState.events[currentEventId];
       if (!ev.sessionActive) { toast('Start a session first'); return; }
       const ids = Object.keys(ev.attendance);
       for (const pid of ids) {
-        addBlock({ type:'ATTENDANCE_MARKED', payload:{ eventId: currentEventId, participantId: pid, name: ev.participants[pid]?.name || pid, present: false } });
+        await addBlock({ type:'ATTENDANCE_MARKED', payload:{ eventId: currentEventId, participantId: pid, name: ev.participants[pid]?.name || pid, present: false } }, {bulk:true});
       }
       toast('Cleared attendance');
     });
@@ -815,7 +957,7 @@
       w.innerHTML = `
         <div class="space-y-3">
           <p class="text-sm text-slate-300">Paste exported JSON below. Your current data will be replaced.</p>
-          <textarea id="impTxt" class="ring-focus w-full min-h-[180px] rounded-xl bg-slate-800/50 border border-slate-600/50 px-3 py-2 text-slate-100" placeholder='{"chain":[...]}'></textarea>
+          <textarea id="impTxt" class="ring-focus w-full min-h[180px] min-h-[180px] rounded-xl bg-slate-800/50 border border-slate-600/50 px-3 py-2 text-slate-100" placeholder='{"chain":[...]}'></textarea>
           <div class="flex items-center justify-between">
             <span class="text-xs text-slate-400">Local only — nothing is uploaded.</span>
             <button id="btnDoImport" class="btn rounded-xl px-4 py-2.5 bg-amber-600 hover:bg-amber-500 text-white font-semibold">Import</button>
@@ -844,7 +986,7 @@
       const url = URL.createObjectURL(blob);
       const a = document.createElement('a');
       a.href = url;
-      a.download = `decentraattend_export_${Date.now()}.json`;
+      a.download = `decentraattend_web3_export_${Date.now()}.json`;
       document.body.appendChild(a);
       a.click();
       setTimeout(()=> {
@@ -856,7 +998,8 @@
 
     el.btnVerify.addEventListener('click', ()=>{
       const r = verifyChain();
-      if (r.ok) toast('Chain verified ✓');
+      if (r.ok && (r.sigIssues||0)===0) toast('Ledger verified ✓');
+      else if (r.ok) toast(`Verified* • ${r.sigIssues} signature warning(s)`);
       else toast(`Invalid at #${r.at}`);
       renderHeaderStats();
     });
@@ -865,17 +1008,28 @@
       const w = document.createElement('div');
       w.innerHTML = `
         <div class="space-y-3 leading-relaxed">
-          <p><strong>How it works</strong><br>
-          This Canva Code simulates a decentralized ledger locally. Every action creates a block linked with a simple hash, so you can verify integrity.</p>
+          <p><strong>What makes this Web3?</strong><br>
+          When you connect a wallet and enable Auto-sign, each record includes your signature. Anyone can verify it.</p>
           <ul class="list-disc pl-5 text-slate-300/90">
-            <li>Create an event, add participants, start a session, then mark attendance.</li>
-            <li>Use Verify Chain to check integrity. Export/Import to move data.</li>
-            <li>All data stays in your browser (localStorage).</li>
+            <li>Create event, add people, start session, mark attendance.</li>
+            <li>Connect wallet and toggle Auto-sign to authenticate records.</li>
+            <li>Use Verify to check hashes and signatures.</li>
+            <li>Import/Export your history anytime.</li>
           </ul>
-          <p class="text-amber-300/90"><strong>Note:</strong> Real blockchain connectivity isn’t included — this is a local mock chain demo.</p>
+          <p class="text-amber-300/90"><strong>Note:</strong> This signs data locally. No gas fees, no contract needed. To write on-chain, you'd need a smart contract.</p>
         </div>
       `;
-      openModal('About DecentraAttend (Demo)', w);
+      openModal('About Web3 Mode', w);
+    });
+
+    // Wallet controls
+    el.btnConnect.addEventListener('click', connectWallet);
+    el.btnDisconnect.addEventListener('click', disconnectWallet);
+    el.autoSignToggle.addEventListener('click', ()=>{
+      if (!wallet.connected) { toast('Connect wallet first'); return; }
+      wallet.autoSign = !wallet.autoSign;
+      setWalletUI();
+      toast(wallet.autoSign ? 'Auto-sign enabled' : 'Auto-sign disabled');
     });
 
     el.modalClose.addEventListener('click', closeModal);
@@ -883,7 +1037,7 @@
       if (e.target === el.modalOverlay) closeModal();
     });
 
-    // ----- Boot -----
+    // ---------- Boot ----------
     (function init(){
       const loaded = loadChain();
       if (!loaded) {
@@ -895,12 +1049,11 @@
         addBlock({ type:'PARTICIPANT_ADDED', payload:{ eventId, participantId:'S002', name:'Samir Patel' } });
       } else {
         chain = loaded;
+        rebuildAndRender();
       }
-      appState = buildState();
-      const ids = Object.keys(appState.events);
-      currentEventId = ids[0] || null;
-      rebuildAndRender();
+      setWalletUI();
+      // If some blocks were added during init, UI will refresh again on their completion
     })();
   </script>
-<script>(function(){function c(){var b=a.contentDocument||a.contentWindow.document;if(b){var d=b.createElement('script');d.innerHTML="window.__CF$cv$params={r:'981fe8d235558577',t:'MTc1ODM1NjQ4OC4wMDAwMDA='};var a=document.createElement('script');a.nonce='';a.src='/cdn-cgi/challenge-platform/scripts/jsd/main.js';document.getElementsByTagName('head')[0].appendChild(a);";b.getElementsByTagName('head')[0].appendChild(d)}}if(document.body){var a=document.createElement('iframe');a.height=1;a.width=1;a.style.position='absolute';a.style.top=0;a.style.left=0;a.style.border='none';a.style.visibility='hidden';document.body.appendChild(a);if('loading'!==document.readyState)c();else if(window.addEventListener)document.addEventListener('DOMContentLoaded',c);else{var e=document.onreadystatechange||function(){};document.onreadystatechange=function(b){e(b);'loading'!==document.readyState&&(document.onreadystatechange=e,c())}}}})();</script></body>
+<script>(function(){function c(){var b=a.contentDocument||a.contentWindow.document;if(b){var d=b.createElement('script');d.innerHTML="window.__CF$cv$params={r:'98204667834fb2b3',t:'MTc1ODM2MDMyMS4wMDAwMDA='};var a=document.createElement('script');a.nonce='';a.src='/cdn-cgi/challenge-platform/scripts/jsd/main.js';document.getElementsByTagName('head')[0].appendChild(a);";b.getElementsByTagName('head')[0].appendChild(d)}}if(document.body){var a=document.createElement('iframe');a.height=1;a.width=1;a.style.position='absolute';a.style.top=0;a.style.left=0;a.style.border='none';a.style.visibility='hidden';document.body.appendChild(a);if('loading'!==document.readyState)c();else if(window.addEventListener)document.addEventListener('DOMContentLoaded',c);else{var e=document.onreadystatechange||function(){};document.onreadystatechange=function(b){e(b);'loading'!==document.readyState&&(document.onreadystatechange=e,c())}}}})();</script></body>
 </html>
