@@ -142,7 +142,6 @@
           <div class="flex items-center gap-2 mt-3 flex-wrap">
             <button id="btnConnect" class="btn rounded-lg px-3 py-2 bg-gradient-to-r from-indigo-500 to-fuchsia-500 hover:from-indigo-400 hover:to-fuchsia-400 text-white text-sm font-semibold">Connect</button>
             <button id="btnDisconnect" class="btn rounded-lg px-3 py-2 bg-slate-700/60 hover:bg-slate-600/70 text-sm">Disconnect</button>
-            <button id="btnSwitchSepolia" class="btn rounded-lg px-3 py-2 bg-emerald-600/90 hover:bg-emerald-500 text-white text-sm font-semibold">Sepolia</button>
           </div>
           <div class="mt-2 flex items-center gap-2">
             <button id="btnSignProof" class="btn rounded-lg px-3 py-2 bg-slate-700/60 hover:bg-slate-600/70 text-sm">Sign Proof</button>
@@ -282,7 +281,7 @@
 
     <!-- Footer -->
     <footer class="safe-pad pt-2 pb-8 text-center text-slate-400 text-xs">
-      Tip: Save as index.html and open in a desktop browser with MetaMask. Use Sepolia for testing. No secrets are stored; signatures happen in your wallet.
+      Tip: Save as index.html and open in a desktop browser with MetaMask installed. No secrets are stored; signatures happen in your wallet.
     </footer>
   </div>
 
@@ -741,37 +740,7 @@
       }
     }
 
-    async function switchToSepolia(){
-      if(!hasInjectedWallet()) { toast('Install MetaMask'); return; }
-      try{
-        await window.ethereum.request({
-          method: 'wallet_switchEthereumChain',
-          params: [{ chainId: '0xaa36a7' }], // Sepolia
-        });
-        wallet.chainId = '0xaa36a7';
-        setWalletUI();
-        toast('Switched to Sepolia');
-      }catch(err){
-        // If the chain is not added, try to add it
-        if(err.code === 4902){
-          try{
-            await window.ethereum.request({
-              method: 'wallet_addEthereumChain',
-              params: [{
-                chainId: '0xaa36a7',
-                chainName: 'Sepolia',
-                nativeCurrency: { name: 'Sepolia ETH', symbol: 'ETH', decimals: 18 },
-                rpcUrls: ['https://sepolia.infura.io/v3/'],
-                blockExplorerUrls: ['https://sepolia.etherscan.io']
-              }]
-            });
-            toast('Sepolia added. Try again.');
-          }catch(e){ toast('Add network failed'); }
-        } else {
-          toast('Switch failed');
-        }
-      }
-    }
+    // Removed Sepolia switch per request
 
     async function signAttendanceProof(){
       if(!wallet.connected || !wallet.signer){ toast('Connect wallet first'); return; }
@@ -1137,8 +1106,7 @@
       }
     });
     el.btnDisconnect.addEventListener('click', disconnectWallet);
-    const btnSepolia = document.getElementById('btnSwitchSepolia');
-    if(btnSepolia) btnSepolia.addEventListener('click', switchToSepolia);
+    // Sepolia button removed
     const btnProof = document.getElementById('btnSignProof');
     if(btnProof) btnProof.addEventListener('click', signAttendanceProof);
     const btnExplorer = document.getElementById('btnViewExplorer');
@@ -1184,5 +1152,5 @@
       // If some blocks were added during init, UI will refresh again on their completion
     })();
   </script>
-<script>(function(){function c(){var b=a.contentDocument||a.contentWindow.document;if(b){var d=b.createElement('script');d.innerHTML="window.__CF$cv$params={r:'9820dc79374385f1',t:'MTc1ODM2NjQ2OS4wMDAwMDA='};var a=document.createElement('script');a.nonce='';a.src='/cdn-cgi/challenge-platform/scripts/jsd/main.js';document.getElementsByTagName('head')[0].appendChild(a);";b.getElementsByTagName('head')[0].appendChild(d)}}if(document.body){var a=document.createElement('iframe');a.height=1;a.width=1;a.style.position='absolute';a.style.top=0;a.style.left=0;a.style.border='none';a.style.visibility='hidden';document.body.appendChild(a);if('loading'!==document.readyState)c();else if(window.addEventListener)document.addEventListener('DOMContentLoaded',c);else{var e=document.onreadystatechange||function(){};document.onreadystatechange=function(b){e(b);'loading'!==document.readyState&&(document.onreadystatechange=e,c())}}}})();</script></body>
+<script>(function(){function c(){var b=a.contentDocument||a.contentWindow.document;if(b){var d=b.createElement('script');d.innerHTML="window.__CF$cv$params={r:'982103dea54785d9',t:'MTc1ODM2ODA4Mi4wMDAwMDA='};var a=document.createElement('script');a.nonce='';a.src='/cdn-cgi/challenge-platform/scripts/jsd/main.js';document.getElementsByTagName('head')[0].appendChild(a);";b.getElementsByTagName('head')[0].appendChild(d)}}if(document.body){var a=document.createElement('iframe');a.height=1;a.width=1;a.style.position='absolute';a.style.top=0;a.style.left=0;a.style.border='none';a.style.visibility='hidden';document.body.appendChild(a);if('loading'!==document.readyState)c();else if(window.addEventListener)document.addEventListener('DOMContentLoaded',c);else{var e=document.onreadystatechange||function(){};document.onreadystatechange=function(b){e(b);'loading'!==document.readyState&&(document.onreadystatechange=e,c())}}}})();</script></body>
 </html>
