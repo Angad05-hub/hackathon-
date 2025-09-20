@@ -159,12 +159,16 @@
           <!-- Event Selector -->
           <div class="glass-strong rounded-2xl p-5">
             <div class="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
-              <div>
-                <div class="text-sm text-slate-300/80 mb-1">Select Event</div>
-                <select id="eventSelect" class="ring-focus w-full md:w-80 rounded-xl bg-slate-800/50 border border-slate-600/50 px-3 py-2.5 text-slate-100">
-                </select>
-              </div>
-              <div class="flex items-center gap-3">
+                <select id="eventSelect" 
+  class="ring-focus w-full md:w-80 rounded-xl bg-slate-800/50 border border-slate-600/50 px-3 py-2.5 text-slate-100">
+  <option value="">-- Select Subject --</option>
+  <option value="physics">Physics</option>
+  <option value="maths">Maths</option>
+  <option value="chemistry">Chemistry</option>
+  <option value="english">English</option>
+  <option value="history">History</option>
+  <option value="civics">Civics</option>
+</select>     <div class="flex items-center gap-3">
                 <div class="text-sm">
                   <div class="text-slate-300/80">Event Code</div>
                   <div id="eventCode" class="font-semibold text-white mt-0.5">—</div>
