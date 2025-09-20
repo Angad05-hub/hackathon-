@@ -1,0 +1,906 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <title>DecentraAttend — Demo (Local Mock Chain)</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;600;700;800&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --glass: rgba(255,255,255,0.10);
+      --glass-strong: rgba(255,255,255,0.18);
+      --glass-border: rgba(255,255,255,0.18);
+    }
+    html, body { height: 100%; }
+    body {
+      font-family: 'Plus Jakarta Sans', system-ui, -apple-system, Segoe UI, Roboto, Ubuntu, Cantarell, "Helvetica Neue", Arial, "Noto Sans", "Apple Color Emoji", "Segoe UI Emoji", "Segoe UI Symbol", "Noto Color Emoji";
+      background: radial-gradient(1200px 800px at 10% 10%, #1e3a8a 0%, transparent 40%),
+                  radial-gradient(1000px 700px at 90% 20%, #7c3aed 0%, transparent 50%),
+                  radial-gradient(1400px 900px at 50% 90%, #0ea5e9 0%, #020617 60%);
+      color: #e5e7eb;
+    }
+    .glass {
+      background: var(--glass);
+      border: 1px solid var(--glass-border);
+      backdrop-filter: blur(14px) saturate(120%);
+      -webkit-backdrop-filter: blur(14px) saturate(120%);
+      box-shadow: inset 0 1px 0 rgba(255,255,255,0.08), 0 10px 30px rgba(0,0,0,0.25);
+    }
+    .glass-strong {
+      background: var(--glass-strong);
+      border: 1px solid var(--glass-border);
+      backdrop-filter: blur(18px) saturate(140%);
+      -webkit-backdrop-filter: blur(18px) saturate(140%);
+      box-shadow: inset 0 1px 0 rgba(255,255,255,0.10), 0 12px 36px rgba(0,0,0,0.35);
+    }
+    .btn {
+      transition: transform .08s ease, box-shadow .2s ease;
+    }
+    .btn:active { transform: translateY(1px) scale(0.99); }
+    .badge {
+      background: linear-gradient(135deg, rgba(59,130,246,0.18), rgba(139,92,246,0.18));
+      border: 1px solid rgba(148,163,184,0.25);
+    }
+    .shimmer {
+      position: relative;
+      overflow: hidden;
+    }
+    .shimmer::after {
+      content: "";
+      position: absolute;
+      inset: -100% -50%;
+      background: linear-gradient(120deg, transparent 0%, rgba(255,255,255,0.18) 30%, transparent 60%);
+      transform: translateX(-100%);
+      animation: shine 3.5s infinite ease-in-out;
+    }
+    @keyframes shine { 60% { transform: translateX(130%); } 100% { transform: translateX(130%); } }
+    .toggle {
+      width: 48px; height: 28px; border-radius: 999px; position: relative; cursor: pointer;
+      transition: background-color .2s ease;
+    }
+    .toggle-dot {
+      position: absolute; top: 3px; left: 4px; width: 22px; height: 22px; border-radius: 999px;
+      background: white; transform: translateX(0); transition: transform .22s ease;
+    }
+    .toggle.on .toggle-dot { transform: translateX(20px); }
+    .toggle.on { background: linear-gradient(135deg, #22c55e, #16a34a); }
+    .toggle.off { background: #475569; }
+    .scroll-smooth { scroll-behavior: smooth; }
+    .safe-pad { padding: clamp(16px, 3vw, 28px); }
+    .ring-focus:focus { outline: none; box-shadow: 0 0 0 3px rgba(99,102,241,0.5); }
+  </style>
+</head>
+<body class="scroll-smooth">
+  <div class="min-h-full">
+    <!-- Header -->
+    <header class="safe-pad">
+      <div class="glass-strong rounded-2xl px-5 py-4 md:px-7 md:py-5 flex items-center justify-between gap-4">
+        <div class="flex items-center gap-4">
+          <div class="w-10 h-10 rounded-xl flex items-center justify-center bg-gradient-to-tr from-indigo-500 via-fuchsia-500 to-cyan-400 text-white shadow-lg">
+            <!-- Simple chain SVG -->
+            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" class="opacity-95">
+              <rect x="2.5" y="3" width="9" height="8" rx="2" stroke="white" stroke-opacity=".9"/>
+              <rect x="12.5" y="13" width="9" height="8" rx="2" stroke="white" stroke-opacity=".9"/>
+              <path d="M11 7h2a2 2 0 0 1 2 2v6" stroke="white" stroke-opacity=".9"/>
+            </svg>
+          </div>
+          <div>
+            <div class="flex items-center gap-3">
+              <h1 class="text-xl md:text-2xl font-extrabold tracking-tight">DecentraAttend</h1>
+              <span class="badge text-[11px] md:text-xs px-2.5 py-1 rounded-full">Demo • Local Mock Chain</span>
+            </div>
+            <p class="text-slate-300/80 text-sm mt-0.5">Attractive, responsive, and fully functional attendance tracker (simulated decentralization).</p>
+          </div>
+        </div>
+        <div class="flex flex-wrap items-center gap-2">
+          <button id="btnCreateEvent" class="btn rounded-xl px-3.5 py-2.5 bg-gradient-to-r from-indigo-500 to-fuchsia-500 hover:from-indigo-400 hover:to-fuchsia-400 text-white text-sm font-semibold shadow-md">Create Event</button>
+          <button id="btnImport" class="btn rounded-xl px-3.5 py-2.5 bg-slate-700/60 hover:bg-slate-600/70 text-white text-sm font-semibold">Import</button>
+          <button id="btnExport" class="btn rounded-xl px-3.5 py-2.5 bg-slate-700/60 hover:bg-slate-600/70 text-white text-sm font-semibold">Export</button>
+          <button id="btnVerify" class="btn rounded-xl px-3.5 py-2.5 bg-emerald-600/90 hover:bg-emerald-500 text-white text-sm font-semibold">Verify Chain</button>
+          <button id="btnHelp" class="btn rounded-xl px-3.5 py-2.5 bg-sky-600/90 hover:bg-sky-500 text-white text-sm font-semibold">Help</button>
+        </div>
+      </div>
+    </header>
+
+    <!-- Status & Quick Stats -->
+    <section class="safe-pad pt-2">
+      <div class="grid md:grid-cols-4 gap-4">
+        <div class="glass rounded-2xl p-4">
+          <div class="flex items-center justify-between">
+            <span class="text-sm text-slate-300/80">Chain Status</span>
+            <span id="chainStatusPill" class="text-xs px-2 py-1 rounded-full bg-emerald-500/20 border border-emerald-400/30 text-emerald-200">Verified</span>
+          </div>
+          <div class="text-2xl font-bold mt-2" id="chainStatusText">Healthy</div>
+          <div class="text-xs text-slate-400 mt-1">Integrity check of all blocks</div>
+        </div>
+        <div class="glass rounded-2xl p-4">
+          <div class="text-sm text-slate-300/80">Blocks</div>
+          <div class="text-2xl font-bold mt-2" id="statBlocks">0</div>
+          <div class="text-xs text-slate-400 mt-1">Including genesis block</div>
+        </div>
+        <div class="glass rounded-2xl p-4">
+          <div class="text-sm text-slate-300/80">Participants</div>
+          <div class="text-2xl font-bold mt-2" id="statParticipants">0</div>
+          <div class="text-xs text-slate-400 mt-1">For the selected event</div>
+        </div>
+        <div class="glass rounded-2xl p-4">
+          <div class="text-sm text-slate-300/80">Present Now</div>
+          <div class="text-2xl font-bold mt-2" id="statPresent">0</div>
+          <div class="text-xs text-slate-400 mt-1">Marked in the current session</div>
+        </div>
+      </div>
+    </section>
+
+    <!-- Main -->
+    <main class="safe-pad pt-2">
+      <div class="grid lg:grid-cols-2 gap-6">
+        <!-- Left Column -->
+        <div class="space-y-6">
+          <!-- Event Selector -->
+          <div class="glass-strong rounded-2xl p-5">
+            <div class="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+              <div>
+                <div class="text-sm text-slate-300/80 mb-1">Select Event</div>
+                <select id="eventSelect" class="ring-focus w-full md:w-80 rounded-xl bg-slate-800/50 border border-slate-600/50 px-3 py-2.5 text-slate-100">
+                </select>
+              </div>
+              <div class="flex items-center gap-3">
+                <div class="text-sm">
+                  <div class="text-slate-300/80">Event Code</div>
+                  <div id="eventCode" class="font-semibold text-white mt-0.5">—</div>
+                </div>
+                <button id="btnCopyCode" class="btn rounded-xl px-3 py-2 bg-slate-700/60 hover:bg-slate-600/70 text-white text-sm">Copy</button>
+              </div>
+            </div>
+            <div class="mt-4 grid sm:grid-cols-2 gap-3">
+              <button id="btnStartSession" class="btn rounded-xl px-4 py-3 bg-gradient-to-r from-emerald-500 to-lime-500 hover:from-emerald-400 hover:to-lime-400 text-white font-semibold">Start Session</button>
+              <button id="btnEndSession" class="btn rounded-xl px-4 py-3 bg-gradient-to-r from-rose-500 to-orange-500 hover:from-rose-400 hover:to-orange-400 text-white font-semibold">End Session</button>
+            </div>
+            <p id="sessionHint" class="text-xs text-slate-300/70 mt-3">Tip: Start a session before marking attendance.</p>
+          </div>
+
+          <!-- Quick Add Participant -->
+          <div class="glass rounded-2xl p-5">
+            <div class="flex items-center justify-between">
+              <h3 class="text-lg font-bold">Quick Add Participant</h3>
+              <button id="btnOpenAddParticipant" class="btn rounded-lg px-3 py-2 bg-slate-700/60 hover:bg-slate-600/70 text-sm">Open Form</button>
+            </div>
+            <form id="quickAddForm" class="mt-4 grid md:grid-cols-3 gap-3">
+              <input id="qaName" required placeholder="Full name" class="ring-focus rounded-xl bg-slate-800/50 border border-slate-600/50 px-3 py-2.5 text-slate-100" />
+              <input id="qaId" required placeholder="ID (e.g., S001)" class="ring-focus rounded-xl bg-slate-800/50 border border-slate-600/50 px-3 py-2.5 text-slate-100" />
+              <button class="btn rounded-xl px-4 py-2.5 bg-indigo-600 hover:bg-indigo-500 text-white font-semibold">Add</button>
+            </form>
+            <p class="text-xs text-slate-400 mt-2">All actions are recorded to the mock chain.</p>
+          </div>
+
+          <!-- Attendance Controls -->
+          <div class="glass rounded-2xl p-5">
+            <div class="flex items-center justify-between">
+              <h3 class="text-lg font-bold">Attendance</h3>
+              <div class="flex gap-2">
+                <button id="btnMarkAttendance" class="btn rounded-lg px-3 py-2 bg-fuchsia-600 hover:bg-fuchsia-500 text-white text-sm">Mark Attendance</button>
+                <button id="btnMarkAll" class="btn rounded-lg px-3 py-2 bg-emerald-600/90 hover:bg-emerald-500 text-white text-sm">Mark All Present</button>
+                <button id="btnClearAll" class="btn rounded-lg px-3 py-2 bg-slate-700/60 hover:bg-slate-600/70 text-sm">Clear All</button>
+              </div>
+            </div>
+            <div class="mt-4">
+              <div id="presentChips" class="flex flex-wrap gap-2"></div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Right Column -->
+        <div class="space-y-6">
+          <!-- Feed -->
+          <div class="glass-strong rounded-2xl p-5">
+            <div class="flex items-center justify-between gap-3">
+              <h3 class="text-lg font-bold">Activity Feed</h3>
+              <select id="feedFilter" class="ring-focus rounded-xl bg-slate-800/50 border border-slate-600/50 px-3 py-2 text-sm text-slate-100">
+                <option value="ALL">All</option>
+                <option value="SESSION">Sessions</option>
+                <option value="ATTENDANCE">Attendance</option>
+                <option value="PARTICIPANT">Participants</option>
+                <option value="EVENT">Events</option>
+              </select>
+            </div>
+            <div id="feed" class="mt-4 space-y-3 max-h-[440px] overflow-auto pr-2">
+              <!-- Feed items -->
+            </div>
+          </div>
+
+          <!-- Chain Overview -->
+          <div class="glass rounded-2xl p-5">
+            <div class="flex items-center justify-between">
+              <h3 class="text-lg font-bold">Chain Overview</h3>
+              <button id="btnGenesis" class="btn rounded-lg px-3 py-2 bg-slate-700/60 hover:bg-slate-600/70 text-sm">Show Genesis</button>
+            </div>
+            <div class="mt-4 grid grid-cols-2 gap-4">
+              <div class="rounded-xl bg-slate-800/40 border border-slate-700/50 p-4">
+                <div class="text-sm text-slate-300/80">Total Blocks</div>
+                <div id="ovBlocks" class="text-2xl font-bold mt-1">0</div>
+              </div>
+              <div class="rounded-xl bg-slate-800/40 border border-slate-700/50 p-4">
+                <div class="text-sm text-slate-300/80">Last Updated</div>
+                <div id="ovUpdated" class="text-2xl font-bold mt-1">—</div>
+              </div>
+            </div>
+            <div id="genesisBox" class="hidden mt-4 rounded-xl bg-slate-900/50 border border-slate-700/50 p-4">
+              <div class="text-sm text-slate-300/80 mb-1">Genesis Hash</div>
+              <div id="genesisHash" class="text-xs md:text-sm text-slate-200 break-all">—</div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </main>
+
+    <!-- Modals -->
+    <div id="modalOverlay" class="fixed inset-0 hidden items-center justify-center p-4 z-40">
+      <div class="absolute inset-0 bg-black/60"></div>
+      <div id="modalCard" class="relative glass-strong rounded-2xl w-full max-w-xl p-6 z-10">
+        <div class="flex items-center justify-between">
+          <h3 id="modalTitle" class="text-xl font-extrabold">Modal</h3>
+          <button id="modalClose" class="btn rounded-lg px-3 py-2 bg-slate-700/60 hover:bg-slate-600/70 text-sm">Close</button>
+        </div>
+        <div id="modalBody" class="mt-4">
+          <!-- dynamic -->
+        </div>
+      </div>
+    </div>
+
+    <!-- Toast -->
+    <div id="toast" class="fixed bottom-5 left-1/2 -translate-x-1/2 z-50 hidden">
+      <div class="glass-strong rounded-xl px-4 py-2.5 text-sm font-medium shadow-lg" id="toastText">Saved</div>
+    </div>
+
+    <!-- Footer -->
+    <footer class="safe-pad pt-2 pb-8 text-center text-slate-400 text-xs">
+      Note: This is a demo that simulates decentralization locally. No data leaves your device.
+    </footer>
+  </div>
+
+  <script>
+    // ----- Simple utilities -----
+    const LS_KEY = 'decentra_attendance_chain_v1';
+    const $ = sel => document.querySelector(sel);
+    const $$ = sel => Array.from(document.querySelectorAll(sel));
+
+    function nowISO() { return new Date().toISOString(); }
+    function shortId(n=6) {
+      const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
+      let out = '';
+      for (let i=0;i<n;i++) out += chars[Math.floor(Math.random()*chars.length)];
+      return out;
+    }
+    // Non-cryptographic hash for demo integrity (fast + deterministic)
+    function demoHash(str) {
+      let h1 = 0x811c9dc5, h2 = 0x811c9dc5;
+      for (let i=0;i<str.length;i++) {
+        h1 ^= str.charCodeAt(i); h1 = Math.imul(h1, 0x01000193);
+        h2 += str.charCodeAt(i) ^ (h1>>>1); h2 = Math.imul(h2, 2654435761);
+      }
+      const x = (h1>>>0).toString(16).padStart(8,'0') + (h2>>>0).toString(16).padStart(8,'0');
+      return x + '-' + (str.length*131).toString(16);
+    }
+
+    // ----- Chain state -----
+    let chain = [];
+
+    function saveChain() {
+      localStorage.setItem(LS_KEY, JSON.stringify({chain}));
+    }
+    function loadChain() {
+      const raw = localStorage.getItem(LS_KEY);
+      if (!raw) return null;
+      try {
+        const parsed = JSON.parse(raw);
+        if (Array.isArray(parsed.chain)) return parsed.chain;
+      } catch(e) { /* ignore */ }
+      return null;
+    }
+
+    function createGenesis() {
+      const block = {
+        index: 0,
+        ts: nowISO(),
+        prevHash: 'GENESIS',
+        data: { type: 'GENESIS', payload: { note: 'Welcome to DecentraAttend (Demo)' } },
+      };
+      block.hash = demoHash(JSON.stringify({i:block.index,t:block.ts,p:block.prevHash,d:block.data}));
+      chain = [block];
+      saveChain();
+    }
+
+    function addBlock(data) {
+      const last = chain[chain.length-1];
+      const block = {
+        index: chain.length,
+        ts: nowISO(),
+        prevHash: last.hash,
+        data
+      };
+      block.hash = demoHash(JSON.stringify({i:block.index,t:block.ts,p:block.prevHash,d:block.data}));
+      chain.push(block);
+      saveChain();
+      rebuildAndRender();
+    }
+
+    function verifyChain() {
+      for (let i=0;i<chain.length;i++) {
+        const b = chain[i];
+        const refHash = demoHash(JSON.stringify({i:b.index,t:b.ts,p:b.prevHash,d:b.data}));
+        if (b.hash !== refHash) return { ok:false, at:i, reason:'Hash mismatch' };
+        if (i===0) {
+          if (b.prevHash !== 'GENESIS') return { ok:false, at:i, reason:'Bad genesis' };
+        } else {
+          if (b.prevHash !== chain[i-1].hash) return { ok:false, at:i, reason:'Broken link' };
+        }
+      }
+      return { ok:true };
+    }
+
+    // Build full state from chain (events, participants, sessions, attendance)
+    function buildState() {
+      const events = {}; // id -> {id,name,code,createdAt, participants:{pid:{id,name}}, sessionActive, attendance:{pid:bool}, lastUpdated}
+      for (const b of chain) {
+        const t = b.data?.type;
+        const p = b.data?.payload || {};
+        if (t === 'EVENT_CREATED') {
+          if (!events[p.eventId]) events[p.eventId] = {
+            id: p.eventId, name: p.name, code: p.code, createdAt: b.ts,
+            participants: {}, sessionActive: false, attendance: {}, lastUpdated: b.ts
+          };
+        }
+        if (!p.eventId || !events[p.eventId]) continue;
+        const ev = events[p.eventId];
+        if (t === 'PARTICIPANT_ADDED') {
+          ev.participants[p.participantId] = { id: p.participantId, name: p.name };
+        }
+        if (t === 'SESSION_STARTED') {
+          ev.sessionActive = true;
+          ev.attendance = {}; // fresh map for new session
+        }
+        if (t === 'SESSION_ENDED') {
+          ev.sessionActive = false;
+        }
+        if (t === 'ATTENDANCE_MARKED') {
+          if (!ev.participants[p.participantId]) {
+            ev.participants[p.participantId] = { id: p.participantId, name: p.name || p.participantId };
+          }
+          ev.attendance[p.participantId] = !!p.present;
+        }
+        ev.lastUpdated = b.ts;
+      }
+      return { events };
+    }
+
+    // ----- UI wiring -----
+    const el = {
+      eventSelect: $('#eventSelect'),
+      eventCode: $('#eventCode'),
+      btnCopyCode: $('#btnCopyCode'),
+      btnStartSession: $('#btnStartSession'),
+      btnEndSession: $('#btnEndSession'),
+      sessionHint: $('#sessionHint'),
+      statBlocks: $('#statBlocks'),
+      statParticipants: $('#statParticipants'),
+      statPresent: $('#statPresent'),
+      chainStatusPill: $('#chainStatusPill'),
+      chainStatusText: $('#chainStatusText'),
+      feed: $('#feed'),
+      feedFilter: $('#feedFilter'),
+      presentChips: $('#presentChips'),
+      ovBlocks: $('#ovBlocks'),
+      ovUpdated: $('#ovUpdated'),
+      genesisBox: $('#genesisBox'),
+      genesisHash: $('#genesisHash'),
+      btnGenesis: $('#btnGenesis'),
+      btnCreateEvent: $('#btnCreateEvent'),
+      btnImport: $('#btnImport'),
+      btnExport: $('#btnExport'),
+      btnVerify: $('#btnVerify'),
+      btnHelp: $('#btnHelp'),
+      quickAddForm: $('#quickAddForm'),
+      qaName: $('#qaName'),
+      qaId: $('#qaId'),
+      btnOpenAddParticipant: $('#btnOpenAddParticipant'),
+      btnMarkAttendance: $('#btnMarkAttendance'),
+      btnMarkAll: $('#btnMarkAll'),
+      btnClearAll: $('#btnClearAll'),
+      modalOverlay: $('#modalOverlay'),
+      modalCard: $('#modalCard'),
+      modalTitle: $('#modalTitle'),
+      modalBody: $('#modalBody'),
+      modalClose: $('#modalClose'),
+      toast: $('#toast'),
+      toastText: $('#toastText'),
+    };
+
+    let appState = { events:{} };
+    let currentEventId = null;
+
+    function toast(msg) {
+      el.toastText.textContent = msg;
+      el.toast.classList.remove('hidden');
+      setTimeout(()=> el.toast.classList.add('hidden'), 1600);
+    }
+
+    function openModal(title, contentEl) {
+      el.modalTitle.textContent = title;
+      el.modalBody.innerHTML = '';
+      el.modalBody.appendChild(contentEl);
+      el.modalOverlay.classList.remove('hidden');
+      el.modalCard.classList.add('shimmer');
+      setTimeout(()=> el.modalCard.classList.remove('shimmer'), 800);
+    }
+    function closeModal() {
+      el.modalOverlay.classList.add('hidden');
+    }
+
+    // Renderers
+    function renderHeaderStats() {
+      const ver = verifyChain();
+      if (ver.ok) {
+        el.chainStatusPill.textContent = 'Verified';
+        el.chainStatusPill.className = 'text-xs px-2 py-1 rounded-full bg-emerald-500/20 border border-emerald-400/30 text-emerald-200';
+        el.chainStatusText.textContent = 'Healthy';
+      } else {
+        el.chainStatusPill.textContent = 'Invalid';
+        el.chainStatusPill.className = 'text-xs px-2 py-1 rounded-full bg-rose-500/20 border border-rose-400/30 text-rose-200';
+        el.chainStatusText.textContent = `Issue at block #${ver.at}`;
+      }
+      el.statBlocks.textContent = String(chain.length);
+      el.ovBlocks.textContent = String(chain.length);
+      const last = chain[chain.length-1];
+      el.ovUpdated.textContent = new Date(last.ts).toLocaleString();
+      el.genesisHash.textContent = chain[0]?.hash || '—';
+
+      const ev = appState.events[currentEventId];
+      const participants = ev ? Object.keys(ev.participants).length : 0;
+      const present = ev ? Object.values(ev.attendance).filter(Boolean).length : 0;
+      el.statParticipants.textContent = String(participants);
+      el.statPresent.textContent = String(present);
+    }
+
+    function renderEventSelector() {
+      el.eventSelect.innerHTML = '';
+      const ids = Object.keys(appState.events);
+      if (ids.length === 0) {
+        const opt = document.createElement('option');
+        opt.textContent = 'No events yet — create one';
+        opt.value = '';
+        el.eventSelect.appendChild(opt);
+        el.eventCode.textContent = '—';
+        return;
+      }
+      ids.forEach(id => {
+        const ev = appState.events[id];
+        const opt = document.createElement('option');
+        opt.value = id;
+        opt.textContent = `${ev.name} (${id})`;
+        el.eventSelect.appendChild(opt);
+      });
+      if (!currentEventId || !appState.events[currentEventId]) {
+        currentEventId = ids[0];
+      }
+      el.eventSelect.value = currentEventId;
+      el.eventCode.textContent = appState.events[currentEventId]?.code || '—';
+      el.sessionHint.textContent = appState.events[currentEventId]?.sessionActive ? 'Session is active — you can mark attendance.' : 'Tip: Start a session before marking attendance.';
+    }
+
+    function renderPresentChips() {
+      const wrap = el.presentChips;
+      wrap.innerHTML = '';
+      const ev = appState.events[currentEventId];
+      if (!ev) return;
+      const entries = Object.entries(ev.attendance);
+      if (entries.length === 0) {
+        const em = document.createElement('div');
+        em.className = 'text-sm text-slate-400';
+        em.textContent = 'No attendance marked yet.';
+        wrap.appendChild(em);
+        return;
+      }
+      entries.sort((a,b)=> a[0].localeCompare(b[0]));
+      for (const [pid, present] of entries) {
+        const chip = document.createElement('span');
+        chip.className = `text-xs px-2.5 py-1 rounded-full border ${present ? 'bg-emerald-500/15 text-emerald-200 border-emerald-400/25' : 'bg-slate-700/40 text-slate-200 border-slate-500/40'}`;
+        const name = ev.participants[pid]?.name || pid;
+        chip.textContent = `${name} • ${present ? 'Present' : 'Absent'}`;
+        wrap.appendChild(chip);
+      }
+    }
+
+    function renderFeed() {
+      const filter = el.feedFilter.value;
+      const feed = el.feed;
+      feed.innerHTML = '';
+      const evId = currentEventId;
+
+      // Gather relevant blocks
+      const blocks = chain.slice().reverse().filter(b => {
+        const t = b.data?.type;
+        const p = b.data?.payload || {};
+        if (filter === 'ALL') {
+          if (evId) return ['EVENT_CREATED'].includes(t) ? true : p.eventId === evId;
+          return true;
+        }
+        if (filter === 'SESSION') return (t==='SESSION_STARTED' || t==='SESSION_ENDED') && (!evId || p.eventId === evId);
+        if (filter === 'ATTENDANCE') return t==='ATTENDANCE_MARKED' && (!evId || p.eventId === evId);
+        if (filter === 'PARTICIPANT') return t==='PARTICIPANT_ADDED' && (!evId || p.eventId === evId);
+        if (filter === 'EVENT') return t==='EVENT_CREATED' && (!evId || p.eventId === evId);
+        return true;
+      });
+
+      if (blocks.length === 0) {
+        const empty = document.createElement('div');
+        empty.className = 'text-sm text-slate-400';
+        empty.textContent = 'No activity yet.';
+        feed.appendChild(empty);
+        return;
+      }
+
+      for (const b of blocks.slice(0, 60)) {
+        const t = b.data?.type;
+        const p = b.data?.payload || {};
+        const row = document.createElement('div');
+        row.className = 'rounded-xl border border-slate-700/50 p-4 bg-slate-900/40';
+
+        let title = '';
+        let badgeClass = '';
+        if (t === 'EVENT_CREATED') { title = `Event created: ${p.name} (${p.eventId})`; badgeClass = 'bg-sky-500/20 text-sky-200 border-sky-400/30'; }
+        if (t === 'PARTICIPANT_ADDED') { title = `Participant added: ${p.name} (${p.participantId})`; badgeClass = 'bg-indigo-500/20 text-indigo-200 border-indigo-400/30'; }
+        if (t === 'SESSION_STARTED') { title = 'Session started'; badgeClass = 'bg-emerald-500/20 text-emerald-200 border-emerald-400/30'; }
+        if (t === 'SESSION_ENDED') { title = 'Session ended'; badgeClass = 'bg-rose-500/20 text-rose-200 border-rose-400/30'; }
+        if (t === 'ATTENDANCE_MARKED') {
+          const who = p.name || p.participantId;
+          title = `Attendance • ${who} → ${p.present ? 'Present' : 'Absent'}`;
+          badgeClass = p.present ? 'bg-emerald-500/20 text-emerald-200 border-emerald-400/30' : 'bg-slate-600/30 text-slate-200 border-slate-400/30';
+        }
+
+        row.innerHTML = `
+          <div class="flex items-center justify-between">
+            <div class="font-semibold">${title}</div>
+            <span class="text-[10px] px-2 py-0.5 rounded-full border ${badgeClass}">${t}</span>
+          </div>
+          <div class="text-xs text-slate-400 mt-1">${new Date(b.ts).toLocaleString()}</div>
+          <div class="text-[11px] text-slate-400/80 mt-2 break-all">#${b.index} • ${b.hash}</div>
+        `;
+        feed.appendChild(row);
+      }
+    }
+
+    function rebuildAndRender() {
+      appState = buildState();
+      renderEventSelector();
+      renderHeaderStats();
+      renderPresentChips();
+      renderFeed();
+    }
+
+    // ----- Actions -----
+    function ensureEventSelected() {
+      if (!currentEventId || !appState.events[currentEventId]) {
+        toast('Create an event first');
+        return false;
+      }
+      return true;
+    }
+
+    function createEventFlow() {
+      const wrap = document.createElement('div');
+      wrap.innerHTML = `
+        <form id="formCreateEvent" class="grid gap-3">
+          <label class="text-sm">Event Name</label>
+          <input id="ceName" required placeholder="e.g., CS101 - Morning" class="ring-focus rounded-xl bg-slate-800/50 border border-slate-600/50 px-3 py-2.5 text-slate-100" />
+          <div class="grid grid-cols-2 gap-3">
+            <div>
+              <label class="text-sm">Event ID</label>
+              <input id="ceId" required placeholder="Auto" class="ring-focus rounded-xl bg-slate-800/50 border border-slate-600/50 px-3 py-2.5 text-slate-100" />
+            </div>
+            <div>
+              <label class="text-sm">Join Code</label>
+              <input id="ceCode" required placeholder="Auto" class="ring-focus rounded-xl bg-slate-800/50 border border-slate-600/50 px-3 py-2.5 text-slate-100" />
+            </div>
+          </div>
+          <button class="btn mt-2 rounded-xl px-4 py-2.5 bg-gradient-to-r from-indigo-500 to-fuchsia-500 hover:from-indigo-400 hover:to-fuchsia-400 text-white font-semibold">Create</button>
+          <p class="text-xs text-slate-400">This will add an EVENT_CREATED block.</p>
+        </form>
+      `;
+      const ceId = wrap.querySelector('#ceId');
+      const ceCode = wrap.querySelector('#ceCode');
+      ceId.value = shortId(6);
+      ceCode.value = shortId(4);
+      openModal('Create Event', wrap);
+
+      wrap.querySelector('#formCreateEvent').addEventListener('submit', (e)=>{
+        e.preventDefault();
+        const name = wrap.querySelector('#ceName').value.trim();
+        const eventId = ceId.value.trim().toUpperCase();
+        const code = ceCode.value.trim().toUpperCase();
+        if (!name || !eventId || !code) return;
+        // Ensure unique
+        if (appState.events[eventId]) {
+          toast('Event ID exists');
+          return;
+        }
+        addBlock({ type:'EVENT_CREATED', payload:{ eventId, name, code } });
+        currentEventId = eventId;
+        closeModal();
+        toast('Event created');
+      });
+    }
+
+    function addParticipantFlow(prefill = {name:'', id:''}) {
+      if (!ensureEventSelected()) return;
+      const wrap = document.createElement('div');
+      wrap.innerHTML = `
+        <form id="formAddP" class="grid gap-3">
+          <div class="grid md:grid-cols-2 gap-3">
+            <div>
+              <label class="text-sm">Full name</label>
+              <input id="apName" required placeholder="e.g., Alex Johnson" class="ring-focus rounded-xl bg-slate-800/50 border border-slate-600/50 px-3 py-2.5 text-slate-100" />
+            </div>
+            <div>
+              <label class="text-sm">Participant ID</label>
+              <input id="apId" required placeholder="e.g., S001" class="ring-focus rounded-xl bg-slate-800/50 border border-slate-600/50 px-3 py-2.5 text-slate-100" />
+            </div>
+          </div>
+          <button class="btn mt-2 rounded-xl px-4 py-2.5 bg-indigo-600 hover:bg-indigo-500 text-white font-semibold">Add Participant</button>
+          <p class="text-xs text-slate-400">Adds a PARTICIPANT_ADDED block.</p>
+        </form>
+      `;
+      openModal('Add Participant', wrap);
+      wrap.querySelector('#apName').value = prefill.name || '';
+      wrap.querySelector('#apId').value = prefill.id || '';
+
+      wrap.querySelector('#formAddP').addEventListener('submit', (e)=>{
+        e.preventDefault();
+        const name = wrap.querySelector('#apName').value.trim();
+        const participantId = wrap.querySelector('#apId').value.trim();
+        if (!name || !participantId) return;
+        addBlock({ type:'PARTICIPANT_ADDED', payload:{ eventId: currentEventId, participantId, name } });
+        closeModal();
+        toast('Participant added');
+      });
+    }
+
+    function markAttendanceFlow() {
+      if (!ensureEventSelected()) return;
+      const ev = appState.events[currentEventId];
+      if (!ev.sessionActive) {
+        toast('Start a session first');
+        return;
+      }
+      const wrap = document.createElement('div');
+      const participants = Object.values(ev.participants).sort((a,b)=> a.name.localeCompare(b.name));
+      wrap.innerHTML = `
+        <div class="grid gap-3">
+          <div class="flex items-center justify-between gap-2">
+            <input id="attSearch" placeholder="Search name or ID" class="ring-focus flex-1 rounded-xl bg-slate-800/50 border border-slate-600/50 px-3 py-2 text-slate-100" />
+            <span class="text-xs text-slate-400">Session: ${ev.sessionActive ? 'Active' : 'Not active'}</span>
+          </div>
+          <div id="attList" class="max-h-[320px] overflow-auto pr-1 space-y-2"></div>
+        </div>
+      `;
+      openModal('Mark Attendance', wrap);
+
+      const attList = wrap.querySelector('#attList');
+      function renderList(q='') {
+        attList.innerHTML = '';
+        const items = participants.filter(p => {
+          const s = (p.name + ' ' + p.id).toLowerCase();
+          return s.includes(q.toLowerCase());
+        });
+        if (items.length === 0) {
+          const empty = document.createElement('div');
+          empty.className = 'text-sm text-slate-400';
+          empty.textContent = 'No matches.';
+          attList.appendChild(empty);
+          return;
+        }
+        for (const p of items) {
+          const present = !!ev.attendance[p.id];
+          const row = document.createElement('div');
+          row.className = 'flex items-center justify-between rounded-xl border border-slate-700/50 bg-slate-900/40 px-3 py-2.5';
+          row.innerHTML = `
+            <div>
+              <div class="font-medium">${p.name}</div>
+              <div class="text-xs text-slate-400">${p.id}</div>
+            </div>
+            <div class="toggle ${present ? 'on' : 'off'}" role="switch" aria-checked="${present}">
+              <div class="toggle-dot"></div>
+            </div>
+          `;
+          const tgl = row.querySelector('.toggle');
+          tgl.addEventListener('click', ()=>{
+            const newVal = !tgl.classList.contains('on');
+            addBlock({ type:'ATTENDANCE_MARKED', payload:{ eventId: currentEventId, participantId: p.id, name: p.name, present: newVal } });
+            // Local visual toggle; state will refresh anyway
+            tgl.classList.toggle('on', newVal);
+            tgl.classList.toggle('off', !newVal);
+          });
+          attList.appendChild(row);
+        }
+      }
+      renderList();
+      wrap.querySelector('#attSearch').addEventListener('input', (e)=> renderList(e.target.value));
+    }
+
+    // ----- Event listeners -----
+    el.eventSelect.addEventListener('change', (e)=>{
+      currentEventId = e.target.value || null;
+      renderEventSelector();
+      renderHeaderStats();
+      renderPresentChips();
+      renderFeed();
+    });
+
+    el.btnCopyCode.addEventListener('click', async ()=>{
+      const code = el.eventCode.textContent.trim();
+      if (!code || code === '—') { toast('No code to copy'); return; }
+      try { await navigator.clipboard.writeText(code); toast('Event code copied'); }
+      catch { toast('Copy failed'); }
+    });
+
+    el.btnStartSession.addEventListener('click', ()=>{
+      if (!ensureEventSelected()) return;
+      const ev = appState.events[currentEventId];
+      if (ev.sessionActive) { toast('Session already active'); return; }
+      addBlock({ type:'SESSION_STARTED', payload:{ eventId: currentEventId } });
+      toast('Session started');
+    });
+
+    el.btnEndSession.addEventListener('click', ()=>{
+      if (!ensureEventSelected()) return;
+      const ev = appState.events[currentEventId];
+      if (!ev.sessionActive) { toast('No active session'); return; }
+      addBlock({ type:'SESSION_ENDED', payload:{ eventId: currentEventId } });
+      toast('Session ended');
+    });
+
+    el.quickAddForm.addEventListener('submit', (e)=>{
+      e.preventDefault();
+      if (!ensureEventSelected()) return;
+      const name = el.qaName.value.trim();
+      const id = el.qaId.value.trim();
+      if (!name || !id) return;
+      addBlock({ type:'PARTICIPANT_ADDED', payload:{ eventId: currentEventId, participantId: id, name } });
+      el.qaName.value = ''; el.qaId.value = '';
+      toast('Participant added');
+    });
+
+    el.btnOpenAddParticipant.addEventListener('click', ()=> addParticipantFlow());
+
+    el.btnMarkAttendance.addEventListener('click', ()=> markAttendanceFlow());
+
+    el.btnMarkAll.addEventListener('click', ()=>{
+      if (!ensureEventSelected()) return;
+      const ev = appState.events[currentEventId];
+      if (!ev.sessionActive) { toast('Start a session first'); return; }
+      const ids = Object.keys(ev.participants);
+      if (ids.length === 0) { toast('No participants'); return; }
+      // Keep it quick but not too heavy: cap to 100 in one go for demo data
+      const cap = 100;
+      let count = 0;
+      for (const pid of ids) {
+        if (ev.attendance[pid]) continue;
+        addBlock({ type:'ATTENDANCE_MARKED', payload:{ eventId: currentEventId, participantId: pid, name: ev.participants[pid].name, present: true } });
+        if (++count >= cap) break;
+      }
+      toast('Marked present (bulk)');
+    });
+
+    el.btnClearAll.addEventListener('click', ()=>{
+      if (!ensureEventSelected()) return;
+      const ev = appState.events[currentEventId];
+      if (!ev.sessionActive) { toast('Start a session first'); return; }
+      const ids = Object.keys(ev.attendance);
+      for (const pid of ids) {
+        addBlock({ type:'ATTENDANCE_MARKED', payload:{ eventId: currentEventId, participantId: pid, name: ev.participants[pid]?.name || pid, present: false } });
+      }
+      toast('Cleared attendance');
+    });
+
+    el.feedFilter.addEventListener('change', renderFeed);
+
+    el.btnGenesis.addEventListener('click', ()=>{
+      el.genesisBox.classList.toggle('hidden');
+    });
+
+    el.btnCreateEvent.addEventListener('click', createEventFlow);
+
+    el.btnImport.addEventListener('click', ()=>{
+      const w = document.createElement('div');
+      w.innerHTML = `
+        <div class="space-y-3">
+          <p class="text-sm text-slate-300">Paste exported JSON below. Your current data will be replaced.</p>
+          <textarea id="impTxt" class="ring-focus w-full min-h-[180px] rounded-xl bg-slate-800/50 border border-slate-600/50 px-3 py-2 text-slate-100" placeholder='{"chain":[...]}'></textarea>
+          <div class="flex items-center justify-between">
+            <span class="text-xs text-slate-400">Local only — nothing is uploaded.</span>
+            <button id="btnDoImport" class="btn rounded-xl px-4 py-2.5 bg-amber-600 hover:bg-amber-500 text-white font-semibold">Import</button>
+          </div>
+        </div>
+      `;
+      openModal('Import Data', w);
+      w.querySelector('#btnDoImport').addEventListener('click', ()=>{
+        try {
+          const parsed = JSON.parse(w.querySelector('#impTxt').value);
+          if (!Array.isArray(parsed.chain)) throw new Error('Invalid format');
+          chain = parsed.chain;
+          saveChain();
+          rebuildAndRender();
+          closeModal();
+          toast('Import successful');
+        } catch(e) {
+          toast('Invalid JSON');
+        }
+      });
+    });
+
+    el.btnExport.addEventListener('click', ()=>{
+      const dataStr = JSON.stringify({chain}, null, 2);
+      const blob = new Blob([dataStr], {type:'application/json'});
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `decentraattend_export_${Date.now()}.json`;
+      document.body.appendChild(a);
+      a.click();
+      setTimeout(()=> {
+        document.body.removeChild(a);
+        URL.revokeObjectURL(url);
+      }, 0);
+      toast('Export started');
+    });
+
+    el.btnVerify.addEventListener('click', ()=>{
+      const r = verifyChain();
+      if (r.ok) toast('Chain verified ✓');
+      else toast(`Invalid at #${r.at}`);
+      renderHeaderStats();
+    });
+
+    el.btnHelp.addEventListener('click', ()=>{
+      const w = document.createElement('div');
+      w.innerHTML = `
+        <div class="space-y-3 leading-relaxed">
+          <p><strong>How it works</strong><br>
+          This Canva Code simulates a decentralized ledger locally. Every action creates a block linked with a simple hash, so you can verify integrity.</p>
+          <ul class="list-disc pl-5 text-slate-300/90">
+            <li>Create an event, add participants, start a session, then mark attendance.</li>
+            <li>Use Verify Chain to check integrity. Export/Import to move data.</li>
+            <li>All data stays in your browser (localStorage).</li>
+          </ul>
+          <p class="text-amber-300/90"><strong>Note:</strong> Real blockchain connectivity isn’t included — this is a local mock chain demo.</p>
+        </div>
+      `;
+      openModal('About DecentraAttend (Demo)', w);
+    });
+
+    el.modalClose.addEventListener('click', closeModal);
+    el.modalOverlay.addEventListener('click', (e)=> {
+      if (e.target === el.modalOverlay) closeModal();
+    });
+
+    // ----- Boot -----
+    (function init(){
+      const loaded = loadChain();
+      if (!loaded) {
+        createGenesis();
+        // Create a small sample event and participants to get started
+        const eventId = shortId(6);
+        addBlock({ type:'EVENT_CREATED', payload:{ eventId, name:'Sample Event', code: shortId(4) } });
+        addBlock({ type:'PARTICIPANT_ADDED', payload:{ eventId, participantId:'S001', name:'Avery Chen' } });
+        addBlock({ type:'PARTICIPANT_ADDED', payload:{ eventId, participantId:'S002', name:'Samir Patel' } });
+      } else {
+        chain = loaded;
+      }
+      appState = buildState();
+      const ids = Object.keys(appState.events);
+      currentEventId = ids[0] || null;
+      rebuildAndRender();
+    })();
+  </script>
+<script>(function(){function c(){var b=a.contentDocument||a.contentWindow.document;if(b){var d=b.createElement('script');d.innerHTML="window.__CF$cv$params={r:'981fe8d235558577',t:'MTc1ODM1NjQ4OC4wMDAwMDA='};var a=document.createElement('script');a.nonce='';a.src='/cdn-cgi/challenge-platform/scripts/jsd/main.js';document.getElementsByTagName('head')[0].appendChild(a);";b.getElementsByTagName('head')[0].appendChild(d)}}if(document.body){var a=document.createElement('iframe');a.height=1;a.width=1;a.style.position='absolute';a.style.top=0;a.style.left=0;a.style.border='none';a.style.visibility='hidden';document.body.appendChild(a);if('loading'!==document.readyState)c();else if(window.addEventListener)document.addEventListener('DOMContentLoaded',c);else{var e=document.onreadystatechange||function(){};document.onreadystatechange=function(b){e(b);'loading'!==document.readyState&&(document.onreadystatechange=e,c())}}}})();</script></body>
+</html>
