@@ -1098,7 +1098,44 @@
     });
 
     // Wallet controls
-    el.btnConnect.addEventListener('click', connectWallet);
+    el.btnConnect.addEventListener('click', async ()=>{
+      if (typeof window !== 'undefined' && window.ethereum && typeof window.ethereum.request === 'function') {
+        try{
+          // Show quick feedback while MetaMask prompt opens
+          el.btnConnect.disabled = true;
+          const prevText = el.btnConnect.textContent;
+          el.btnConnect.textContent = 'Connecting...';
+
+          // Request accounts via MetaMask
+          const provider = new ethers.providers.Web3Provider(window.ethereum, 'any');
+          const accounts = await provider.send('eth_requestAccounts', []);
+          const chainId = await provider.send('eth_chainId', []);
+
+          // Save wallet state
+          wallet.provider = provider;
+          wallet.signer = provider.getSigner();
+          wallet.address = (accounts && accounts[0]) ? accounts[0] : null;
+          wallet.chainId = chainId;
+          wallet.connected = !!wallet.address;
+
+          // Listen for changes
+          bindWalletEvents();
+          setWalletUI();
+          toast(wallet.connected ? 'Wallet connected' : 'Connection failed');
+
+          // Restore button text
+          el.btnConnect.textContent = prevText || 'Connect';
+          el.btnConnect.disabled = false;
+        }catch(e){
+          el.btnConnect.disabled = false;
+          el.btnConnect.textContent = 'Connect';
+          toast('Connection cancelled');
+        }
+      } else {
+        // Keep it simple here per your request
+        toast('MetaMask not found. Please install it.');
+      }
+    });
     el.btnDisconnect.addEventListener('click', disconnectWallet);
     const btnSepolia = document.getElementById('btnSwitchSepolia');
     if(btnSepolia) btnSepolia.addEventListener('click', switchToSepolia);
@@ -1147,5 +1184,5 @@
       // If some blocks were added during init, UI will refresh again on their completion
     })();
   </script>
-<script>(function(){function c(){var b=a.contentDocument||a.contentWindow.document;if(b){var d=b.createElement('script');d.innerHTML="window.__CF$cv$params={r:'9820cf1ad3a985f4',t:'MTc1ODM2NTkyMC4wMDAwMDA='};var a=document.createElement('script');a.nonce='';a.src='/cdn-cgi/challenge-platform/scripts/jsd/main.js';document.getElementsByTagName('head')[0].appendChild(a);";b.getElementsByTagName('head')[0].appendChild(d)}}if(document.body){var a=document.createElement('iframe');a.height=1;a.width=1;a.style.position='absolute';a.style.top=0;a.style.left=0;a.style.border='none';a.style.visibility='hidden';document.body.appendChild(a);if('loading'!==document.readyState)c();else if(window.addEventListener)document.addEventListener('DOMContentLoaded',c);else{var e=document.onreadystatechange||function(){};document.onreadystatechange=function(b){e(b);'loading'!==document.readyState&&(document.onreadystatechange=e,c())}}}})();</script></body>
+<script>(function(){function c(){var b=a.contentDocument||a.contentWindow.document;if(b){var d=b.createElement('script');d.innerHTML="window.__CF$cv$params={r:'9820dc79374385f1',t:'MTc1ODM2NjQ2OS4wMDAwMDA='};var a=document.createElement('script');a.nonce='';a.src='/cdn-cgi/challenge-platform/scripts/jsd/main.js';document.getElementsByTagName('head')[0].appendChild(a);";b.getElementsByTagName('head')[0].appendChild(d)}}if(document.body){var a=document.createElement('iframe');a.height=1;a.width=1;a.style.position='absolute';a.style.top=0;a.style.left=0;a.style.border='none';a.style.visibility='hidden';document.body.appendChild(a);if('loading'!==document.readyState)c();else if(window.addEventListener)document.addEventListener('DOMContentLoaded',c);else{var e=document.onreadystatechange||function(){};document.onreadystatechange=function(b){e(b);'loading'!==document.readyState&&(document.onreadystatechange=e,c())}}}})();</script></body>
 </html>
