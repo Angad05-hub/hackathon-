@@ -91,7 +91,7 @@
               <h1 class="text-xl md:text-2xl font-extrabold tracking-tight">DecentraAttend — Web3</h1>
               <span class="badge text-[11px] md:text-xs px-2.5 py-1 rounded-full">MetaMask • Signed Records</span>
             </div>
-            <p class="text-slate-300/80 text-sm mt-0.5">Attractive, easy attendance with a local ledger + optional wallet signatures.</p>
+            <p class="text-slate-300/80 text-sm mt-0.5">Professional attendance with a tamper‑evident ledger, wallet signatures, and network tools.</p>
           </div>
         </div>
         <div class="flex flex-wrap items-center gap-2">
@@ -139,9 +139,14 @@
           </div>
           <div id="walletAddr" class="text-sm font-semibold mt-2 mono truncate">Not connected</div>
           <div id="walletNet" class="text-xs text-slate-400">—</div>
-          <div class="flex items-center gap-2 mt-3">
+          <div class="flex items-center gap-2 mt-3 flex-wrap">
             <button id="btnConnect" class="btn rounded-lg px-3 py-2 bg-gradient-to-r from-indigo-500 to-fuchsia-500 hover:from-indigo-400 hover:to-fuchsia-400 text-white text-sm font-semibold">Connect</button>
             <button id="btnDisconnect" class="btn rounded-lg px-3 py-2 bg-slate-700/60 hover:bg-slate-600/70 text-sm">Disconnect</button>
+            <button id="btnSwitchSepolia" class="btn rounded-lg px-3 py-2 bg-emerald-600/90 hover:bg-emerald-500 text-white text-sm font-semibold">Sepolia</button>
+          </div>
+          <div class="mt-2 flex items-center gap-2">
+            <button id="btnSignProof" class="btn rounded-lg px-3 py-2 bg-slate-700/60 hover:bg-slate-600/70 text-sm">Sign Proof</button>
+            <button id="btnViewExplorer" class="btn rounded-lg px-3 py-2 bg-slate-700/60 hover:bg-slate-600/70 text-sm">Explorer</button>
           </div>
           <div class="mt-3 flex items-center justify-between">
             <div class="text-xs text-slate-300/80">Auto-sign blocks</div>
@@ -159,16 +164,12 @@
           <!-- Event Selector -->
           <div class="glass-strong rounded-2xl p-5">
             <div class="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
-                <select id="eventSelect" 
-  class="ring-focus w-full md:w-80 rounded-xl bg-slate-800/50 border border-slate-600/50 px-3 py-2.5 text-slate-100">
-  <option value="">-- Select Subject --</option>
-  <option value="physics">Physics</option>
-  <option value="maths">Maths</option>
-  <option value="chemistry">Chemistry</option>
-  <option value="english">English</option>
-  <option value="history">History</option>
-  <option value="civics">Civics</option>
-</select>     <div class="flex items-center gap-3">
+              <div>
+                <div class="text-sm text-slate-300/80 mb-1">Select Event</div>
+                <select id="eventSelect" class="ring-focus w-full md:w-80 rounded-xl bg-slate-800/50 border border-slate-600/50 px-3 py-2.5 text-slate-100">
+                </select>
+              </div>
+              <div class="flex items-center gap-3">
                 <div class="text-sm">
                   <div class="text-slate-300/80">Event Code</div>
                   <div id="eventCode" class="font-semibold text-white mt-0.5">—</div>
@@ -281,7 +282,7 @@
 
     <!-- Footer -->
     <footer class="safe-pad pt-2 pb-8 text-center text-slate-400 text-xs">
-      Tip: For real wallet connections, save this as index.html and open it in a browser with MetaMask installed. No data leaves your device unless you choose to sign.
+      Tip: Save as index.html and open in a desktop browser with MetaMask. Use Sepolia for testing. No secrets are stored; signatures happen in your wallet.
     </footer>
   </div>
 
@@ -687,9 +688,27 @@
       return typeof window !== 'undefined' && window.ethereum && typeof window.ethereum.request === 'function';
     }
 
+    function bindWalletEvents(){
+      if(!hasInjectedWallet()) return;
+      // Account or chain changes from MetaMask
+      window.ethereum.removeAllListeners && window.ethereum.removeAllListeners('accountsChanged');
+      window.ethereum.removeAllListeners && window.ethereum.removeAllListeners('chainChanged');
+      window.ethereum.on && window.ethereum.on('accountsChanged', async (accs)=>{
+        wallet.address = (accs && accs[0]) ? accs[0] : null;
+        wallet.connected = !!wallet.address;
+        if(wallet.provider){ wallet.signer = wallet.provider.getSigner(); }
+        setWalletUI();
+        toast(wallet.connected ? 'Account changed' : 'Disconnected');
+      });
+      window.ethereum.on && window.ethereum.on('chainChanged', async (cid)=>{
+        wallet.chainId = cid;
+        setWalletUI();
+        toast('Network changed');
+      });
+    }
+
     async function connectWallet(){
       if (!hasInjectedWallet()) {
-        // Show guide
         const guide = document.createElement('div');
         guide.innerHTML = `
           <div class="space-y-3 leading-relaxed text-sm">
@@ -706,18 +725,70 @@
         return;
       }
       try{
-        const accounts = await window.ethereum.request({ method: 'eth_requestAccounts' });
-        const chainId = await window.ethereum.request({ method: 'eth_chainId' });
-        wallet.provider = new ethers.providers.Web3Provider(window.ethereum);
-        wallet.signer = wallet.provider.getSigner();
+        const provider = new ethers.providers.Web3Provider(window.ethereum, 'any');
+        const accounts = await provider.send('eth_requestAccounts', []);
+        const chainId = await provider.send('eth_chainId', []);
+        wallet.provider = provider;
+        wallet.signer = provider.getSigner();
         wallet.address = (accounts && accounts[0]) ? accounts[0] : null;
         wallet.chainId = chainId;
         wallet.connected = !!wallet.address;
+        bindWalletEvents();
         setWalletUI();
         toast(wallet.connected ? 'Wallet connected' : 'Connection failed');
       }catch(e){
         toast('Connection cancelled');
       }
+    }
+
+    async function switchToSepolia(){
+      if(!hasInjectedWallet()) { toast('Install MetaMask'); return; }
+      try{
+        await window.ethereum.request({
+          method: 'wallet_switchEthereumChain',
+          params: [{ chainId: '0xaa36a7' }], // Sepolia
+        });
+        wallet.chainId = '0xaa36a7';
+        setWalletUI();
+        toast('Switched to Sepolia');
+      }catch(err){
+        // If the chain is not added, try to add it
+        if(err.code === 4902){
+          try{
+            await window.ethereum.request({
+              method: 'wallet_addEthereumChain',
+              params: [{
+                chainId: '0xaa36a7',
+                chainName: 'Sepolia',
+                nativeCurrency: { name: 'Sepolia ETH', symbol: 'ETH', decimals: 18 },
+                rpcUrls: ['https://sepolia.infura.io/v3/'],
+                blockExplorerUrls: ['https://sepolia.etherscan.io']
+              }]
+            });
+            toast('Sepolia added. Try again.');
+          }catch(e){ toast('Add network failed'); }
+        } else {
+          toast('Switch failed');
+        }
+      }
+    }
+
+    async function signAttendanceProof(){
+      if(!wallet.connected || !wallet.signer){ toast('Connect wallet first'); return; }
+      try{
+        const msg = `DecentraAttend Proof\nAddress: ${wallet.address}\nTime: ${new Date().toLocaleString()}`;
+        const sig = await wallet.signer.signMessage(msg);
+        // Store proof in localStorage for later verification/export
+        localStorage.setItem('decentraattend_last_proof', JSON.stringify({msg,sig,address:wallet.address,ts:Date.now()}));
+        toast('Proof signed');
+      }catch(e){ toast('Signing cancelled'); }
+    }
+
+    function openExplorer(){
+      if(!wallet.connected || !wallet.address){ toast('Connect wallet'); return; }
+      let url = 'https://etherscan.io/address/' + wallet.address;
+      if(wallet.chainId==='0xaa36a7') url = 'https://sepolia.etherscan.io/address/' + wallet.address;
+      window.open(url, '_blank');
     }
 
     function disconnectWallet(){
@@ -1029,6 +1100,12 @@
     // Wallet controls
     el.btnConnect.addEventListener('click', connectWallet);
     el.btnDisconnect.addEventListener('click', disconnectWallet);
+    const btnSepolia = document.getElementById('btnSwitchSepolia');
+    if(btnSepolia) btnSepolia.addEventListener('click', switchToSepolia);
+    const btnProof = document.getElementById('btnSignProof');
+    if(btnProof) btnProof.addEventListener('click', signAttendanceProof);
+    const btnExplorer = document.getElementById('btnViewExplorer');
+    if(btnExplorer) btnExplorer.addEventListener('click', openExplorer);
     el.autoSignToggle.addEventListener('click', ()=>{
       if (!wallet.connected) { toast('Connect wallet first'); return; }
       wallet.autoSign = !wallet.autoSign;
@@ -1046,11 +1123,22 @@
       const loaded = loadChain();
       if (!loaded) {
         createGenesis();
-        // Create a small sample event and participants to get started
-        const eventId = shortId(6);
-        addBlock({ type:'EVENT_CREATED', payload:{ eventId, name:'Sample Event', code: shortId(4) } });
-        addBlock({ type:'PARTICIPANT_ADDED', payload:{ eventId, participantId:'S001', name:'Avery Chen' } });
-        addBlock({ type:'PARTICIPANT_ADDED', payload:{ eventId, participantId:'S002', name:'Samir Patel' } });
+        // Create subject-based sample events with a couple of participants each
+        const subjects = [
+          { name:'Physics', participants:[{id:'PH001', name:'Marie Curie'},{id:'PH002', name:'Isaac Newton'}] },
+          { name:'Chemistry', participants:[{id:'CH001', name:'Rosalind Franklin'},{id:'CH002', name:'Dmitri Mendeleev'}] },
+          { name:'Biology', participants:[{id:'BI001', name:'Charles Darwin'},{id:'BI002', name:'Barbara McClintock'}] },
+          { name:'History', participants:[{id:'HI001', name:'Herodotus'},{id:'HI002', name:'Mary Beard'}] },
+          { name:'Mathematics', participants:[{id:'MA001', name:'Carl Gauss'},{id:'MA002', name:'Emmy Noether'}] },
+        ];
+        subjects.forEach(s => {
+          const eventId = shortId(6);
+          const code = shortId(4);
+          addBlock({ type:'EVENT_CREATED', payload:{ eventId, name:s.name, code } });
+          s.participants.forEach(p => {
+            addBlock({ type:'PARTICIPANT_ADDED', payload:{ eventId, participantId:p.id, name:p.name } });
+          });
+        });
       } else {
         chain = loaded;
         rebuildAndRender();
@@ -1059,5 +1147,5 @@
       // If some blocks were added during init, UI will refresh again on their completion
     })();
   </script>
-<script>(function(){function c(){var b=a.contentDocument||a.contentWindow.document;if(b){var d=b.createElement('script');d.innerHTML="window.__CF$cv$params={r:'98204667834fb2b3',t:'MTc1ODM2MDMyMS4wMDAwMDA='};var a=document.createElement('script');a.nonce='';a.src='/cdn-cgi/challenge-platform/scripts/jsd/main.js';document.getElementsByTagName('head')[0].appendChild(a);";b.getElementsByTagName('head')[0].appendChild(d)}}if(document.body){var a=document.createElement('iframe');a.height=1;a.width=1;a.style.position='absolute';a.style.top=0;a.style.left=0;a.style.border='none';a.style.visibility='hidden';document.body.appendChild(a);if('loading'!==document.readyState)c();else if(window.addEventListener)document.addEventListener('DOMContentLoaded',c);else{var e=document.onreadystatechange||function(){};document.onreadystatechange=function(b){e(b);'loading'!==document.readyState&&(document.onreadystatechange=e,c())}}}})();</script></body>
+<script>(function(){function c(){var b=a.contentDocument||a.contentWindow.document;if(b){var d=b.createElement('script');d.innerHTML="window.__CF$cv$params={r:'9820cf1ad3a985f4',t:'MTc1ODM2NTkyMC4wMDAwMDA='};var a=document.createElement('script');a.nonce='';a.src='/cdn-cgi/challenge-platform/scripts/jsd/main.js';document.getElementsByTagName('head')[0].appendChild(a);";b.getElementsByTagName('head')[0].appendChild(d)}}if(document.body){var a=document.createElement('iframe');a.height=1;a.width=1;a.style.position='absolute';a.style.top=0;a.style.left=0;a.style.border='none';a.style.visibility='hidden';document.body.appendChild(a);if('loading'!==document.readyState)c();else if(window.addEventListener)document.addEventListener('DOMContentLoaded',c);else{var e=document.onreadystatechange||function(){};document.onreadystatechange=function(b){e(b);'loading'!==document.readyState&&(document.onreadystatechange=e,c())}}}})();</script></body>
 </html>
